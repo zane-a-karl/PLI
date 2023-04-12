@@ -1,0 +1,3 @@
+[submodule "MP-SPDZ"]
+	path = MP-SPDZ
+	url = https://github.com/SeoyeonHwang/MP-SPDZ.git
