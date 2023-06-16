@@ -10,25 +10,38 @@ int
 generate_elgamal_keys (GamalKeys *keys)
 {
     int r;
-    int prime_sec_par = 1024;
-    unsigned int rand_sec_par = 1024;
+    int prime_sec_par = 128;
+    unsigned int rand_sec_par = 128;
     //a safe prime is a prime p s.t. (p-1)/2
     //is also prime, required for ElGamal sec
     int is_safe = 1;
     BN_CTX *ctx = BN_CTX_new();
+    keys->pk = calloc(1, sizeof(struct GamalPk));
     keys->pk->modulus   = BN_new();
     keys->pk->generator = BN_new();
     keys->pk->mul_mask  = BN_new();
+    keys->sk = calloc(1, sizeof(struct GamalSk));
     keys->sk->secret    = BN_new();
 
     // Gen the field's prime modulus
     r = BN_generate_prime_ex2(keys->pk->modulus,
 			      prime_sec_par,
-			      is_safe,
-			      keys->pk->generator,
+			      is_safe, NULL,
 			      NULL, NULL, ctx);
     if (!r) {
 	perror("Failed to generate prime ex2");
+	return FAILURE;
+    }
+
+    // Generate a random generator
+    // Note everything generates because we work
+    // over a prime order field
+    r = BN_rand_range_ex(keys->pk->generator,
+			 keys->pk->modulus,
+			 rand_sec_par,
+			 ctx);
+    if (!r) {
+	perror("Failed to gen generator");
 	return FAILURE;
     }
     // Check if it's indeed prime
@@ -61,29 +74,6 @@ generate_elgamal_keys (GamalKeys *keys)
     BN_CTX_free(ctx);
     return SUCCESS;
 
-}
-
-int
-alloc_gamal_pk_mem(GamalPk *pk)
-{
-    BN_CTX *ctx = BN_CTX_new();
-    pk->modulus = BN_new();
-    pk->generator = BN_new();
-    pk->mul_mask = BN_new();
-    if (!pk->modulus) {
-	perror("Failed modulus bn new");
-	return FAILURE;
-    }
-    if (!pk->generator) {
-	perror("Failed generator bn new");
-	return FAILURE;
-    }
-    if (!pk->mul_mask) {
-	perror("Failed mulmask bn new");
-	return FAILURE;
-    }
-    BN_CTX_free(ctx);
-    return SUCCESS;
 }
 
 /**

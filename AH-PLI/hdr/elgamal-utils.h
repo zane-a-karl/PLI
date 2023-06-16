@@ -31,9 +31,6 @@ int
 generate_elgamal_keys (GamalKeys *keys);
 
 int
-alloc_gamal_pk_mem(GamalPk *pk);
-
-int
 elgamal_mul (GamalCiphertext *res,
 	     GamalCiphertext   *a,
 	     GamalCiphertext   *b,

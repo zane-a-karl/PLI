@@ -76,13 +76,15 @@ main (int   argc,
     // Start the protocol
     int r;
     const int num_entries = 3;
-    unsigned char buffer[MAX_MSG_LEN];
+    char *buffer;
     GamalKeys client_keys;
     GamalPk server_pk;
     GamalCiphertext server_cipher[num_entries];
     GamalCiphertext client_cipher[num_entries];
     uint64_t plain[num_entries];
     uint64_t inv_plain[num_entries];
+
+    buffer = calloc(MAX_MSG_LEN, sizeof(char));
 
     // Generate Keys
     r = generate_elgamal_keys(&client_keys);
@@ -92,28 +94,52 @@ main (int   argc,
     }
 
     // Receive server_pk via socket
+    // 1st: the modulus
     memset(buffer, 0, MAX_MSG_LEN);
-    r = recv(sockfd, buffer,
-	     MAX_MSG_LEN, 0);
+    r = recv(sockfd, buffer, MAX_MSG_LEN-1, 0);
     if ( r  == -1 ) {
 	perror("recv pk2");
 	exit(1);
     }
     buffer[r] = '\0';
-    printf("client: received pk2 '%s'\n", buffer);
-    r = alloc_gamal_pk_mem(&server_pk);
+    printf("client: received modulus   = ");
+    printf("%s\n", buffer);
+    server_pk.modulus = BN_new();
+    r = BN_hex2bn(&server_pk.modulus, buffer);
     if (!r) {
-	perror("Failed to alloc mem for pk2");
+	perror("Failed mulmask hex2bn");
 	exit(1);
     }
-    server_pk.modulus = client_keys.pk->modulus;
-    server_pk.generator =
-	client_keys.pk->generator;
-    BN_bin2bn(buffer,
-	      r,
-	      server_pk.mul_mask);
-    if (!server_pk.mul_mask) {
-	perror("Failed mulmask bin2bn");
+    // 2nd: the generator
+    memset(buffer, 0, MAX_MSG_LEN);
+    r = recv(sockfd, buffer, MAX_MSG_LEN-1, 0);
+    if ( r  == -1 ) {
+	perror("recv pk2");
+	exit(1);
+    }
+    buffer[r] = '\0';
+    printf("client: received generator = ");
+    printf("%s\n", buffer);
+    server_pk.generator = BN_new();
+    r = BN_hex2bn(&server_pk.generator, buffer);
+    if (!r) {
+	perror("Failed mulmask hex2bn");
+	exit(1);
+    }
+    // 3rd: the mul_mask
+    memset(buffer, 0, MAX_MSG_LEN);
+    r = recv(sockfd, buffer, MAX_MSG_LEN-1, 0);
+    if ( r  == -1 ) {
+	perror("recv pk2");
+	exit(1);
+    }
+    buffer[r] = '\0';
+    printf("client: received mul_mask  = ");
+    printf("%s\n", buffer);
+    server_pk.mul_mask = BN_new();
+    r = BN_hex2bn(&server_pk.mul_mask, buffer);
+    if (!r) {
+	perror("Failed mulmask hex2bn");
 	exit(1);
     }
 
@@ -122,7 +148,7 @@ main (int   argc,
     for (int i = 0; i < num_entries; i++) {
 	// Recv c1
 	memset(buffer, 0, MAX_MSG_LEN);
-	r = recv(sockfd, buffer, MAX_MSG_LEN, 0);
+	r = recv(sockfd, buffer, MAX_MSG_LEN-1,0);
 	if ( r  == -1 ) {
 	    perror("Failed to recv c1");
 	    exit(1);
@@ -130,11 +156,15 @@ main (int   argc,
 	buffer[r] = '\0';
 	printf("client: received c1 '%s'\n",
 	       buffer);
-	server_cipher[i].c1 =
-	    BN_bin2bn(buffer, r, NULL);
+	server_cipher[i].c1 = BN_new();
+	r = BN_hex2bn(&server_cipher[i].c1, buffer);
+	if (!r) {
+	    perror("Failed to hex2bn c1");
+	    exit(1);
+	}
 	// Recv c2
 	memset(buffer, 0, MAX_MSG_LEN);
-	r = recv(sockfd, buffer, MAX_MSG_LEN, 0);
+	r = recv(sockfd, buffer, MAX_MSG_LEN-1,0);
 	if ( r  == -1 ) {
 	    perror("Failed to recv c2");
 	    exit(1);
@@ -142,8 +172,12 @@ main (int   argc,
 	buffer[r] = '\0';
 	printf("client: received c2 '%s'\n",
 	       buffer);
-	server_cipher[i].c2 =
-	    BN_bin2bn(buffer, r, NULL);
+	server_cipher[i].c2 = BN_new();
+	r = BN_hex2bn(&server_cipher[i].c2, buffer);
+	if (!r) {
+	    perror("Failed to hex2bn c1");
+	    exit(1);
+	}
     }
 
     // Generate client list entries
@@ -165,13 +199,13 @@ main (int   argc,
     BIGNUM *inv_plain_bn[num_entries];
     for (int i = 0; i < num_entries; i++) {
 	plain_bn[i] = BN_new();
-	inv_plain_bn[i] = BN_new();
 	// effectively uint64_2_bn
 	r = BN_set_word(plain_bn[i], plain[i]);
 	if (!r) {
 	    perror("Failed to set plain_bn");
 	    exit(1);
 	}
+	inv_plain_bn[i] = BN_new();
 	BN_mod_inverse(inv_plain_bn[i],
 		       plain_bn[i],
 		       server_pk.modulus, ctx);
@@ -223,7 +257,7 @@ main (int   argc,
 	    return FAILURE;
 	}
     }
-    printf("generated random masking value\n");
+    printf(" = generated random masking value\n");
 
     // Raise product of ciphertext to
     // the random value 'rand_exponent'
@@ -235,43 +269,84 @@ main (int   argc,
     }
 
     // Send exp_res to the server
-    unsigned char *c1 = NULL, *c2 = NULL;
+    char *hex;
     for (int i = 0; i < num_entries; i++) {
 	// Send c1
 	memset(buffer, 0, MAX_MSG_LEN);
-	r = BN_bn2bin(exp_res[i].c1, buffer);
-	if (!r) {
-	    perror("Failed to serialize exp c1");
+        hex = BN_bn2hex(exp_res[i].c1);
+	if (!hex) {
+	    close(sockfd);
+	    perror("Error bn2hex exp.c1");
 	    exit(1);
 	}
-	/* memcpy(buffer, c1, MAX_MSG_LEN/\* r *\/); */
+	r = strlcpy(buffer, hex,
+		    strnlen(hex, MAX_MSG_LEN));
+	if (!r) {
+	    close(sockfd);
+	    perror("Error strlcpy hex2buffer");
+	    exit(1);
+	}
+	free(hex);
+	sleep(1);
 	r = send(sockfd, buffer,
-		 sizeof(buffer), 0);
+		 strnlen(buffer, MAX_MSG_LEN),
+		 0);
 	if (r == -1) {
 	    perror("Failed to send c1");
 	    close(sockfd);
 	    exit(0);
 	}
-	printf("client: sent C1 \'%s\', length = %d\n", buffer, r);
+	printf("client: sent c1 \'%s\'\n", buffer);
 	// Send C2
 	memset(buffer, 0, MAX_MSG_LEN);
-	r = BN_bn2bin(exp_res[i].c2, c2);
-	if (!r) {
-	    perror("Failed to serialize exp c2");
+	hex = BN_bn2hex(exp_res[i].c2);
+	if (!hex) {
+	    close(sockfd);
+	    perror("Error bn2hex exp.c2");
 	    exit(1);
 	}
-	memcpy(buffer, c2, MAX_MSG_LEN/* r */);
+	r = strlcpy(buffer, hex,
+		    strnlen(hex, MAX_MSG_LEN));
+	if (!r) {
+	    close(sockfd);
+	    perror("Error strlcpy hex2buffer");
+	    exit(1);
+	}
+	free(hex);
+	sleep(1);
 	r = send(sockfd, buffer,
-		 sizeof(buffer), 0);
+		 strnlen(buffer, MAX_MSG_LEN),
+		 0);
 	if (r == -1) {
 	    perror("Failed to send exp c2");
 	    close(sockfd);
 	    exit(0);
 	}
-	printf("client: sent c2 \'%s\', length = %d\n", buffer, r);
+	printf("client: sent c2 \'%s\'\n", buffer);
     }
 
     close(sockfd);
+    BN_free(client_keys.pk->modulus);
+    BN_free(client_keys.pk->generator);
+    BN_free(client_keys.pk->mul_mask);
+    free(client_keys.pk);
+    BN_free(client_keys.sk->secret);
+    free(client_keys.sk);
+    BN_free(server_pk.modulus);
+    BN_free(server_pk.generator);
+    BN_free(server_pk.mul_mask);
+    for (int i = 0; i < num_entries; i++) {
+	BN_free(plain_bn[i]);
+	BN_free(inv_plain_bn[i]);
+	BN_free(rand_exponent[i]);
+	BN_free(exp_res[i].c1);
+	BN_free(exp_res[i].c2);
+	BN_free(client_cipher[i].c1);
+	BN_free(client_cipher[i].c2);
+	BN_free(server_cipher[i].c1);
+	BN_free(server_cipher[i].c2);
+    }
+    free(buffer);
     BN_CTX_free(ctx);
 
     return 0;

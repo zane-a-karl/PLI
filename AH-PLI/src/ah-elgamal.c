@@ -14,8 +14,10 @@ ah_elgamal_encrypt (GamalCiphertext *ciphertext,
 	return FAILURE;
     }
 
-    bn_plaintext = BN_new();
-    bn_rand_elem = BN_new();
+    bn_plaintext   = BN_new();
+    bn_rand_elem   = BN_new();
+    ciphertext->c1 = BN_new();
+    ciphertext->c2 = BN_new();
 
     r = BN_rand_range(bn_rand_elem, pk->modulus);
     if (!r) {
@@ -110,12 +112,13 @@ ah_elgamal_decrypt (uint64_t         *plaintext,
 				 keys->pk,
 				 bn_plaintext);
     /* r = baby_step_giant_step(bn_plaintext); */
-    
-    *plaintext = BN_get_word(bn_plaintext);
-    if (plaintext + 1 < 0) {
-	perror("Failed bn_plaintext2int");
+    if (!r) {
+	perror("Failed to calculate discrete log");
 	return FAILURE;
     }
+
+    *plaintext = BN_get_word(bn_plaintext);
+
     BN_free(bn_plaintext);
     BN_free(bn_inv);
     BN_CTX_free(ctx);
@@ -135,34 +138,41 @@ brute_force_discrete_log(BIGNUM *exponent,
 			 BIGNUM  *element)
 {
     int r;
-    BIGNUM *x;
+    BIGNUM *x, *test_elem;
     BN_CTX *ctx = BN_CTX_new();
     if (!ctx) {
 	perror("Failed to create new ctx");
 	return FAILURE;
     }
     x = BN_new();
+    test_elem = BN_new();
+    BN_one(test_elem);
     BN_zero(x);
-    while ( BN_cmp(x, pk->modulus) < 0 ) {
-	r = BN_mod_mul(x, x,
+    do {
+	if (0 == BN_cmp(test_elem, element)) {
+	    exponent = BN_dup(x);
+	    /* printf("yes!\n"); */
+	    return SUCCESS;
+	} /* else { */
+	/*     printf("no!!\n");	     */
+	/*     break; */
+	/* } */
+	r = BN_add_word(x, 1ULL);//inc here
+	if (!r) {
+	    perror("Failed to increment");
+	    return FAILURE;
+	}
+	r = BN_mod_mul(test_elem, test_elem,
 		       pk->generator, pk->modulus,
 		       ctx);
 	if (!r) {
 	    perror("Failed to calc g^x * g");
 	    return FAILURE;
 	}
-	if (0 == BN_cmp(x, element)) {
-	    exponent = BN_dup(x);
-	    return SUCCESS;	    
-	}
-	r = BN_add_word(x, 1ULL);//inc here
-	if (!r) {
-	    perror("Failed to increment");
-	    return FAILURE;
-	}
-    }
+    } while ( BN_cmp(x, pk->modulus) < 0 );
 
     BN_free(x);
+    BN_free(test_elem);
     BN_CTX_free(ctx);
     return FAILURE;
 }
