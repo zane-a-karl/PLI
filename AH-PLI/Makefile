@@ -1,35 +1,37 @@
 CC=gcc
 LINK=-lcrypto
-FLAGS=-g -Wall -fsanitize=address
+FLAGS=-g -Wall -Werror -Wpedantic -fsanitize=address
 SRC=src
 OBJ=obj
 HDR=hdr
-CLIENT=$(SRC)/client-ah.c
-SERVER=$(SRC)/server-ah.c
-SRCS=$(filter-out $(CLIENT) $(SERVER),$(wildcard $(SRC)/*.c))
-OBJS=$(filter-out $(CLIENT) $(SERVER),$(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(SRCS)))
-HDRS=$(filter-out $(CLIENT) $(SERVER),$(wildcard $(HDR)/*.h))
 BIN=bin
+SRCS=$(wildcard $(SRC)/*.c)
+HDRS=$(wildcard $(HDR)/*.h)
+OBJS=$(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(SRCS))
 
-all: $(BIN)/client $(BIN)/server
+UTIL_OBJS=$(filter-out $(OBJ)/%client.o $(OBJ)/%server.o, $(OBJS))
+CLSR_OBJS=$(filter $(OBJ)/%client.o $(OBJ)/%server.o, $(OBJS))
 
-$(BIN)/client: $(OBJ)/client-ah.o
+all: EG
+#	debugging commands
+	$(info SRCS: $(SRCS))
+	$(info HDRS: $(HDRS))
+	$(info UTIL_OBJS: $(UTIL_OBJS))
+	$(info CLSR_OBJS: $(CLSR_OBJS))
+	$(info OBJS: $(OBJS))
 
-$(BIN)/server: $(OBJ)/server-ah.o
+EG: $(BIN)/elgamal-client $(BIN)/elgamal-server
+#ECEG: $(BIN)/ec-elgamal-client $(BIN)/ec-elgamal-server
 
-$(OBJ)/client-ah.o: $(CLIENT) $(OBJS)
-	$(CC) $< $(FLAGS) $(OBJS) -o $@ $(LINK)
-
-$(OBJ)/server-ah.o: $(SERVER) $(OBJS)
-	$(CC) $< $(FLAGS) $(OBJS) -o $@ $(LINK)
+$(BIN)/elgamal-%: $(OBJ)/elgamal-%.o $(UTIL_OBJS)
+	$(CC) $(FLAGS) $< $(UTIL_OBJS) -o $@ $(LINK)
+#$(BIN)/ec-elgamal-%: $(OBJ)/ec-elgamal-%.o $(UTIL_OBJS)
+#	$(CC) $(FLAGS) $< $(UTIL_OBJS) -o $@ $(LINK)
 
 $(BIN): $(OBJS)
 	$(CC) $(FLAGS) $(OBJS) -o $@
 
 $(OBJ)/%.o: $(SRC)/%.c
-#	debugging commands
-#	$(info SRCS: $(SRCS))
-#	$(info HDRS: $(HDRS))
 	$(CC) $(FLAGS) -c $< -o $@
 
 dry-run-clean:

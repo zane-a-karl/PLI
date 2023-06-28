@@ -6,18 +6,18 @@
 
 int
 ah_elgamal_encrypt (GamalCiphertext *ciphertext,
-		    GamalPk *pk,
-		    uint64_t *plaintext);
+		    GamalPk                 *pk,
+		    BIGNUM        *bn_plaintext);
 
 int
-ah_elgamal_decrypt (uint64_t *plaintext,
-		    GamalKeys *keys,
+ah_elgamal_decrypt (BIGNUM        *bn_plaintext,
+		    GamalKeys             *keys,
 		    GamalCiphertext *ciphertext);
 
 int
 brute_force_discrete_log(BIGNUM *exponent,
-			 GamalPk *pk,
-			 BIGNUM *element);
+			 GamalPk      *pk,
+			 BIGNUM  *element);
 
 int
 baby_step_giant_step(BIGNUM *bn_plaintext);

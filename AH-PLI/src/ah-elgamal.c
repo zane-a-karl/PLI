@@ -3,10 +3,9 @@
 int
 ah_elgamal_encrypt (GamalCiphertext *ciphertext,
 		    GamalPk                 *pk,
-		    uint64_t         *plaintext)
+		    BIGNUM        *bn_plaintext)
 {
     int r;
-    BIGNUM *bn_plaintext;
     BIGNUM *bn_rand_elem;
     BN_CTX *ctx = BN_CTX_new();
     if (!ctx) {
@@ -14,7 +13,6 @@ ah_elgamal_encrypt (GamalCiphertext *ciphertext,
 	return FAILURE;
     }
 
-    bn_plaintext   = BN_new();
     bn_rand_elem   = BN_new();
     ciphertext->c1 = BN_new();
     ciphertext->c2 = BN_new();
@@ -34,11 +32,6 @@ ah_elgamal_encrypt (GamalCiphertext *ciphertext,
 	return FAILURE;
     }
     // Set c2
-    r = BN_set_word(bn_plaintext, *plaintext);
-    if (!r) {
-	perror("Failed to set ptxt2bn");
-	return FAILURE;
-    }
     r = BN_mod_exp(ciphertext->c2, pk->mul_mask,
 		   bn_rand_elem, pk->modulus,
 		   ctx);
@@ -60,47 +53,47 @@ ah_elgamal_encrypt (GamalCiphertext *ciphertext,
 	perror("Failed to calc g^ptxt * h^rand");
 	return FAILURE;
     }
-    BN_free(bn_plaintext);
     BN_free(bn_rand_elem);
     BN_CTX_free(ctx);
     return SUCCESS;
 }
 
 int
-ah_elgamal_decrypt (uint64_t         *plaintext,
+ah_elgamal_decrypt (BIGNUM        *bn_plaintext,
 		    GamalKeys             *keys,
 		    GamalCiphertext *ciphertext)
 {
     int r;
-    BIGNUM *bn_plaintext;
-    BIGNUM *bn_inv;
+    BIGNUM *denominator;
     BN_CTX *ctx = BN_CTX_new();
     if (!ctx) {
 	perror("Failed to create new ctx");
 	return FAILURE;
     }
+    denominator = BN_new();
+    if (!denominator) {
+	perror("Failed to make new bn");
+	return FAILURE;
+    }
 
-    bn_plaintext = BN_new();
-    bn_inv = BN_new();
-
-    // Calculate 1/c1^sk
-    r = BN_mod_exp(bn_plaintext, ciphertext->c1,
+    // Calculate 1/c1 then 1/c1^sk
+    if (!BN_mod_inverse(denominator,
+			ciphertext->c1,
+			keys->pk->modulus,
+			ctx)) {
+	perror("Failed to calc 1/c1");
+	return FAILURE;
+    }
+    r = BN_mod_exp(denominator, denominator,
 		   keys->sk->secret,
 		   keys->pk->modulus, ctx);
     if (!r) {
-	perror("Failed to calc c1^sk");
-	return FAILURE;
-    }
-    if (!BN_mod_inverse(bn_plaintext,
-			bn_plaintext,
-			keys->pk->modulus,
-			ctx)) {
-	perror("Failed to calc 1/c1^sk");
+	perror("Failed to calc (1/c1)^sk");
 	return FAILURE;
     }
     // evaluate c2/c1^sk
     r = BN_mod_mul(bn_plaintext, ciphertext->c2,
-		   bn_plaintext,
+		   denominator,
 		   keys->pk->modulus, ctx);
     if (!r) {
 	perror("Failed to calc c2/c1^sk");
@@ -117,10 +110,7 @@ ah_elgamal_decrypt (uint64_t         *plaintext,
 	return FAILURE;
     }
 
-    *plaintext = BN_get_word(bn_plaintext);
-
-    BN_free(bn_plaintext);
-    BN_free(bn_inv);
+    BN_free(denominator);
     BN_CTX_free(ctx);
     return SUCCESS;
 }

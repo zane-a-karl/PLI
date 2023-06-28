@@ -10,11 +10,10 @@ int
 generate_elgamal_keys (GamalKeys *keys)
 {
     int r;
-    int prime_sec_par = 128;
-    unsigned int rand_sec_par = 128;
+    unsigned int sec_par = 49;
     //a safe prime is a prime p s.t. (p-1)/2
     //is also prime, required for ElGamal sec
-    int is_safe = 1;
+    /* int is_safe = 1; */
     BN_CTX *ctx = BN_CTX_new();
     keys->pk = calloc(1, sizeof(struct GamalPk));
     keys->pk->modulus   = BN_new();
@@ -24,24 +23,16 @@ generate_elgamal_keys (GamalKeys *keys)
     keys->sk->secret    = BN_new();
 
     // Gen the field's prime modulus
-    r = BN_generate_prime_ex2(keys->pk->modulus,
-			      prime_sec_par,
-			      is_safe, NULL,
-			      NULL, NULL, ctx);
+    /* r = BN_generate_prime_ex2(keys->pk->modulus, */
+    /* 			      sec_par, */
+    /* 			      is_safe, NULL, */
+    /* 			      NULL, NULL, ctx); */
+    /* got prime from https://bigprimes.org/ */
+    /* 15 bit prime right now */
+    r = BN_set_word(keys->pk->modulus,
+		    172758658065239ULL);
     if (!r) {
 	perror("Failed to generate prime ex2");
-	return FAILURE;
-    }
-
-    // Generate a random generator
-    // Note everything generates because we work
-    // over a prime order field
-    r = BN_rand_range_ex(keys->pk->generator,
-			 keys->pk->modulus,
-			 rand_sec_par,
-			 ctx);
-    if (!r) {
-	perror("Failed to gen generator");
 	return FAILURE;
     }
     // Check if it's indeed prime
@@ -51,11 +42,22 @@ generate_elgamal_keys (GamalKeys *keys)
 	perror("Failed to generate true prime");
 	return FAILURE;
     }
+
+    // Generate a random generator
+    // Note everything generates because we work
+    // over a prime order field
+    r = BN_rand_range_ex(keys->pk->generator,
+			 keys->pk->modulus,
+			 sec_par, ctx);
+    if (!r) {
+	perror("Failed to gen generator");
+	return FAILURE;
+    }
+
     // Gen the field element secret key
     r = BN_rand_range_ex(keys->sk->secret,
 			 keys->pk->modulus,
-			 rand_sec_par,
-			 ctx);
+			 sec_par, ctx);
     if (!r) {
 	perror("Failed to gen secret key");
 	return FAILURE;
@@ -64,10 +66,9 @@ generate_elgamal_keys (GamalKeys *keys)
     r = BN_mod_exp(keys->pk->mul_mask,
 		   keys->pk->generator,
 		   keys->sk->secret,
-		   keys->pk->modulus,
-		   ctx);
+		   keys->pk->modulus, ctx);
     if (!r) {
-	perror("Failed to calculate h = g^x");
+	perror("Failed to calculate h = g^sk");
 	return FAILURE;
     }
 
@@ -152,7 +153,7 @@ elgamal_exp (GamalCiphertext *res,
 	return FAILURE;
     }
     // Calc a.c2^r
-    r = BN_mod_mul(res->c2, a->c2, exponent,
+    r = BN_mod_exp(res->c2, a->c2, exponent,
 		   modulus, ctx);
     if (!r) {
 	perror("Error calculating a.c2^r");
