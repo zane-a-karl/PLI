@@ -13,14 +13,16 @@ main (int argc,
     int new_fd; // new connection on new_fd.
     struct addrinfo *service_info; // field values for port "service"
     char *homomorphism_type;
+    char *filename;
 
-    if (argc != 2) {
+    if (argc != 3) {
 	// MH = multiplicatively homomorphic
 	// AH = additively homomorphic
-	fprintf(stderr, "usage: ./<executable> <MH or AH>\n");
+	fprintf(stderr, "usage: ./<executable> <MH or AH> <filename>\n");
 	exit(1);
     }
     homomorphism_type = argv[1];
+    filename = argv[2];
     hardcode_socket_parameters(&service_info, PORT, SERVER, NULL);
     set_socket_and_bind(&sockfd, &service_info);
     freeaddrinfo(service_info);
@@ -42,9 +44,9 @@ main (int argc,
 	    // Start the protocol
 	    r = strncmp(homomorphism_type, "AH", 3);
 	    if (r == 0) {
-		r = server_run_pli(new_fd, AH);
+		r = server_run_pli(new_fd, AH, filename);
 	    } else {
-		r = server_run_pli(new_fd, MH);
+		r = server_run_pli(new_fd, MH, filename);
 	    }
 	    if (!r) {
 		close(new_fd);

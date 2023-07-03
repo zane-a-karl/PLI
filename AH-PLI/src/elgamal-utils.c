@@ -46,9 +46,10 @@ generate_elgamal_keys (GamalKeys *keys)
     // Generate a random generator
     // Note everything generates because we work
     // over a prime order field
-    r = BN_rand_range_ex(keys->pk->generator,
-			 keys->pk->modulus,
-			 sec_par, ctx);
+    /* r = BN_rand_range_ex(keys->pk->generator, */
+    /* 			 keys->pk->modulus, */
+    /* 			 sec_par, ctx); */
+    r = BN_set_word(keys->pk->generator, 3ULL);
     if (!r) {
 	perror("Failed to gen generator");
 	return FAILURE;

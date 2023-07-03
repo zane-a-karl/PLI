@@ -2,9 +2,8 @@
 #define _ELGAMAL_UTILS_H_
 
 #include <openssl/bn.h>
+#include "../hdr/utils.h"
 
-#define SUCCESS 1
-#define FAILURE 0
 
 typedef struct GamalPk {
     /* BIGNUM *group; // unneeded*/

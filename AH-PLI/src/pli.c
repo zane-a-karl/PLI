@@ -1,131 +1,89 @@
 #include "../hdr/pli.h"
 
+
+extern uint64_t total_bytes;
+static struct timespec t1,t2;
+static double sec;
+/* static FILE *logfile; */
+
+#define TSTART printf("Starting the clock\n"); clock_gettime(CLOCK_MONOTONIC, &t1);
+#define TTICK clock_gettime(CLOCK_MONOTONIC, &t2); sec = (t2.tv_sec - t1.tv_sec) + (t2.tv_nsec - t1.tv_nsec) / 1000000000.0; fprintf(stdout/* logfile */,"Line:%5d, Time = %f\n",__LINE__,sec);
+
 int
 server_run_pli (int                  new_fd,
-		enum HomomorphismType htype)
+		enum HomomorphismType htype,
+		char              *filename)
 {
+    TSTART;
     int r;
-    const int num_entries = 3;
-    char *buffer;
-    char *hex;
+    int num_entries = 0;
     GamalKeys server_keys;
-    GamalCiphertext server_cipher[num_entries];
-    GamalCiphertext client_cipher[num_entries];
-    uint64_t plain[num_entries];
-    BIGNUM *bn_recovered[num_entries];
-    BIGNUM *bn_plain[num_entries];
+    GamalCiphertext *server_cipher;
+    GamalCiphertext *client_cipher;
+    uint64_t *plain;
+    BIGNUM **bn_plain;
     BN_CTX *ctx = BN_CTX_new();
 
-    buffer = calloc(MAX_MSG_LEN,sizeof(char));
-
     // Generate Keys
+    printf("Started generating server keys\n"); TTICK;
     r = generate_elgamal_keys(&server_keys);
     if (!r) {
 	perror("Failed to gen EG keys");
 	return FAILURE;
     }
+    printf("Finished generating server keys\n\n"); TTICK;
 
-    // Generate server list entries
-    // i.e. {1, 2, 4}
-    /* srand (time(NULL)); */
-    plain[0] = (uint64_t)1;
-    plain[1] = (uint64_t)2;
-    plain[2] = (uint64_t)4;
-    for (int i=0; i<num_entries; i++) {
-	/* plain[i]  = */
-	/*     ((uint64_t) rand()) * i; */
-	/* plain[i] %= ((1ULL) << 32); */
-	/* plain[i] = */
-	/*     (uint64_t)i + 1ULL; */
-	printf("plain[%i] = %" PRIu64 "\n",
-	       i, plain[i]);
+    // Parse number of list entries from <filename>
+    r = parse_file_for_num_entries(&num_entries, filename);
+    if (!r) {
+	perror("Failed to parse file for number of list entries");
+	close(new_fd);
+	return FAILURE;
     }
-    printf("generated server list\n");
 
-    // send pk2 to client
+    // Parse server list entries from <filename>
+    plain = calloc(num_entries, sizeof(uint64_t));
+    r = parse_file_for_list_entries(&plain, num_entries, filename);
+    if (!r) {
+	perror("Failed to parse file for list entries");
+	close(new_fd);
+	return FAILURE;
+    }
+    /* r = generate_list_entries(&plain, num_entries); */
+    printf("parsed server list\n");
+
+    // Send server pk to client
+    printf("Started sending server pk\n"); TTICK;
     // 1st: the modulus
-    memset(buffer, 0, MAX_MSG_LEN);
-    hex = BN_bn2hex(server_keys.pk->modulus);
-    if (!hex) {
-	close(new_fd);
-	perror("Error bn2hex pk2 modulus");
-	return FAILURE;
-    }
-    r = strlcpy(buffer, hex,
-		strnlen(hex,MAX_MSG_LEN));
+    r = send_bn_msg(new_fd, server_keys.pk->modulus,
+		    "server: sent server modulus   =");
     if (!r) {
-	close(new_fd);
-	perror("Error strlcpy hex2buf");
-	return FAILURE;
-    }
-    free(hex);
-    sleep(1);
-    r = send(new_fd, buffer,
-	     strnlen(buffer,MAX_MSG_LEN),
-	     0);
-    if (r == -1) {
-	perror("Failed to send modulus");
+	perror("Failed to send bn message \"modulus\"");
 	close(new_fd);
 	return FAILURE;
     }
-    printf("server: sent pk2 modulus   =");
-    printf(" %s\n", buffer);
     // 2nd: the generator
-    memset(buffer, 0, MAX_MSG_LEN);
-    hex = BN_bn2hex(server_keys.pk->generator);
-    if (!hex) {
-	close(new_fd);
-	perror("Error bn2hex pk2 gen");
-	return FAILURE;
-    }
-    r = strlcpy(buffer, hex,
-		strnlen(hex, MAX_MSG_LEN));
+    r = send_bn_msg(new_fd, server_keys.pk->generator,
+		    "server: sent server generator =");
     if (!r) {
-	close(new_fd);
-	perror("Error strlcpy hex2buffer");
-	return FAILURE;
-    }
-    free(hex);
-    sleep(1);
-    r = send(new_fd, buffer,
-	     strnlen(buffer, MAX_MSG_LEN),
-	     0);
-    if (r == -1) {
-	perror("Failed to send generator");
+	perror("Failed to send bn message \"generator\"");
 	close(new_fd);
 	return FAILURE;
     }
-    printf("server: sent pk2 generator =");
-    printf(" %s\n", buffer);
     // 3rd: the mul_mask
-    memset(buffer, 0, MAX_MSG_LEN);
-    hex = BN_bn2hex(server_keys.pk->mul_mask);
-    if (!hex) {
-	close(new_fd);
-	perror("Error bn2hex pk2 mask");
-	return FAILURE;
-    }
-    r = strlcpy(buffer, hex,
-		strnlen(hex, MAX_MSG_LEN));
+    r = send_bn_msg(new_fd, server_keys.pk->mul_mask,
+		    "server: sent server mul_mask  =");
     if (!r) {
-	close(new_fd);
-	perror("Error strlcpy hex2buffer");
-	return FAILURE;
-    }
-    free(hex);
-    sleep(1);
-    r = send(new_fd, buffer,
-	     strnlen(buffer, MAX_MSG_LEN),
-	     0);
-    if (r == -1) {
-	perror("Failed to send mul_mask");
+	perror("Failed to send bn message \"mul_mask\"");
 	close(new_fd);
 	return FAILURE;
     }
-    printf("server: sent pk2 mul_mask  =");
-    printf(" %s\n", buffer);
+    printf("Finished sending server pk\n\n"); TTICK;
 
     // encrypt server list entries and send them to client
+    printf("Started sending Enc_pkS(server list)\n"); TTICK;
+    bn_plain = calloc(num_entries, sizeof(*bn_plain));
+    server_cipher = calloc(num_entries, sizeof(*server_cipher));
     for (int i=0; i < num_entries; i++) {
 	bn_plain[i] = BN_new();
 	r = BN_set_word(bn_plain[i], plain[i]);
@@ -141,132 +99,67 @@ server_run_pli (int                  new_fd,
 	    r = mh_elgamal_encrypt(&server_cipher[i],
 				   server_keys.pk,
 				   bn_plain[i]);
-	}	
+	}
 	// Send C1
-	memset(buffer, 0, MAX_MSG_LEN);
-	hex = BN_bn2hex(server_cipher[i].c1);
-	if (!hex) {
-	    close(new_fd);
-	    perror("Error bn2hex c1");
-	    return FAILURE;
-	}
-	r = strlcpy(buffer, hex,
-		    strnlen(hex, MAX_MSG_LEN));
+	r = send_bn_msg(new_fd, server_cipher[i].c1,
+			"server: sent server_cipher.c1");
 	if (!r) {
-	    close(new_fd);
-	    perror("Error strlcpy hex2buffer");
-	    return FAILURE;
-	}
-	free(hex);
-	sleep(1);
-	r = send(new_fd, buffer,
-		 strnlen(buffer,
-			 MAX_MSG_LEN), 0);
-	if (r == -1) {
-	    perror("send C1");
+	    perror("Failed to send bn message \"server_cipher.c1\"");
 	    close(new_fd);
 	    return FAILURE;
 	}
-	printf("server: sent c1 \'%s\'\n",
-	       buffer);
 	// Send C2
-	memset(buffer, 0, MAX_MSG_LEN);
-	hex = BN_bn2hex(server_cipher[i].c2);
-	if (!hex) {
-	    close(new_fd);
-	    perror("Error bn2hex c2");
-	    return FAILURE;
-	}
-	r = strlcpy(buffer, hex,
-		    strnlen(hex, MAX_MSG_LEN));
+	r = send_bn_msg(new_fd, server_cipher[i].c2,
+			"server: sent server_cipher.c2");
 	if (!r) {
-	    close(new_fd);
-	    perror("Error strlcpy hex2buffer");
-	    return FAILURE;
-	}
-	free(hex);
-	sleep(1);
-	r = send(new_fd, buffer,
-		 strnlen(buffer,
-			 MAX_MSG_LEN), 0);
-	if (r == -1) {
-	    perror("failed to send C2");
+	    perror("Failed to send bn message \"server_cipher.c2\"");
 	    close(new_fd);
 	    return FAILURE;
 	}
-	printf("server: sent c2 \'%s\'\n",
-	       buffer);
     }
+    printf("Finished sending Enc_pkS(server list)\n\n"); TTICK;
 
     // Recv exp_res entries from client
+    printf("Started receiving masked Enc_pkS(server list) * Enc_pkS(inv client list)\n"); TTICK;
+    client_cipher = calloc(num_entries, sizeof(*client_cipher));
     for (int i=0; i<num_entries; i++) {
 	// Recv C1
-	memset(buffer, 0, MAX_MSG_LEN);
-	r = recv(new_fd, buffer,
-		 MAX_MSG_LEN, 0);
-	if ( r  == -1 ) {
-	    perror("failed to recv C1");
-	    return FAILURE;
-	}
-	buffer[r] = '\0';
-	printf("server: recv c1 '%s'\n",
-	       buffer);
 	client_cipher[i].c1 = BN_new();
-	r = BN_hex2bn(&client_cipher[i].c1,
-		      buffer);
+	r = recv_bn_msg(new_fd, client_cipher[i].c1,
+			"server: recv client_cipher.c1");
 	if (!r) {
-	    perror("Failed c1 hex2bn");
+	    perror("Failed to recv bn message \"client_cipher.c1\"");
 	    close(new_fd);
 	    return FAILURE;
 	}
 	// Recv C2
-	memset(buffer, 0, MAX_MSG_LEN);
-	r = recv(new_fd, buffer,
-		 MAX_MSG_LEN, 0);
-	if ( r  == -1 ) {
-	    perror("recv C2");
-	    return FAILURE;
-	}
-	buffer[r] = '\0';
-	printf("server: recv c2 '%s'\n",
-	       buffer);
 	client_cipher[i].c2 = BN_new();
-	r = BN_hex2bn(&client_cipher[i].c2,
-		      buffer);
+	r = recv_bn_msg(new_fd, client_cipher[i].c2,
+			"server: recv client_cipher.c2");
 	if (!r) {
-	    perror("Failed c2 hex2bn");
+	    perror("Failed to recv bn message \"client_cipher.c2\"");
 	    close(new_fd);
 	    return FAILURE;
 	}
     }
+    printf("Finished receiving masked Enc_pkS(server list) * Enc_pkS(inv client list)\n\n"); TTICK;
 
-    // Decrypt the client ciphertext
+    // Skip decryption and just check c2 == c1^sk
+    printf("Started pli ciphertext comparison\n"); TTICK;
     for (int i=0; i<num_entries; i++) {
-	bn_recovered[i] = BN_new();
+	printf("Check#%i -> ", i);
 	if (htype == AH) {
-	    r = ah_elgamal_decrypt(bn_recovered[i],
-				   &server_keys,
-				   &client_cipher[i]);
+	    r = ah_skip_dlog_check_is_one(&server_keys, &client_cipher[i]);
 	} else {
-	    r = mh_elgamal_decrypt(bn_recovered[i],
-				   &server_keys,
-				   &client_cipher[i]);
-	}	
+	    r = mh_skip_decrypt_check_equality(&server_keys, &client_cipher[i]);
+	}
 	if(!r) {
-	    perror("Failed recvr plain");
+	    perror("Failed check");
 	    return FAILURE;
 	}
     }
-    printf("Successfully decrypted\n");
-    for (int i=0; i<num_entries; i++) {
-	/* printf("recovered_plain[%i] = %" PRIu64 "\n", i, recovered_plain[i]); */
-	printf("recovered_plain[%i] = ", i);
-	r = BN_print_fp(stdout, bn_recovered[i]);
-	if (BN_is_one(bn_recovered[i])) {
-	    printf("Found a match!");
-	}
-	printf("\n");
-    }
+    printf("Finished pli ciphertext comparison\n\n"); TTICK;
+    printf("Total bytes sent during protocol = %" PRIu64 "\n", total_bytes);
 
     BN_free(server_keys.pk->modulus);
     BN_free(server_keys.pk->generator);
@@ -274,155 +167,125 @@ server_run_pli (int                  new_fd,
     free(server_keys.pk);
     BN_free(server_keys.sk->secret);
     free(server_keys.sk);
+    free(plain);
     for (int i=0; i<num_entries; i++) {
 	BN_free(client_cipher[i].c1);
 	BN_free(client_cipher[i].c2);
 	BN_free(server_cipher[i].c1);
 	BN_free(server_cipher[i].c2);
 	BN_free(bn_plain[i]);
-	BN_free(bn_recovered[i]);
     }
-    free(buffer);
+    free(bn_plain);
+    free(server_cipher);
+    free(client_cipher);
     BN_CTX_free(ctx);
     return SUCCESS;
 }
 
 int
 client_run_pli (int                  sockfd,
-		enum HomomorphismType htype)
+		enum HomomorphismType htype,
+		char *             filename)
 {
+    TSTART;
     int r;
-    const int num_entries = 3;
-    char *buffer;
+    int num_entries = 0;
     GamalKeys client_keys;
     GamalPk server_pk;
-    GamalCiphertext server_cipher[num_entries];
-    GamalCiphertext client_cipher[num_entries];
-    uint64_t plain[num_entries];
-
-    buffer = calloc(MAX_MSG_LEN, sizeof(char));
+    GamalCiphertext *server_cipher;
+    GamalCiphertext *client_cipher;
+    uint64_t *plain;
 
     // Generate Keys
+    printf("Started generating client keys\n"); TTICK;
     r = generate_elgamal_keys(&client_keys);
     if (!r) {
 	perror("Failed to gen elgamal keys");
 	close(sockfd);
 	return FAILURE;
     }
+    printf("Finished generating client keys\n\n"); TTICK;
+
+    // Parse number of list entries from <filename>
+    r = parse_file_for_num_entries(&num_entries, filename);
+    if (!r) {
+	perror("Failed to parse file for number of list entries");
+	close(sockfd);
+	return FAILURE;
+    }
 
     // Receive server_pk via socket
+    printf("Started receiving server pk\n"); TTICK;
     // 1st: the modulus
-    memset(buffer, 0, MAX_MSG_LEN);
-    r = recv(sockfd, buffer, MAX_MSG_LEN-1, 0);
-    if ( r  == -1 ) {
-	perror("recv pk2");
-	close(sockfd);
-	return FAILURE;
-    }
-    buffer[r] = '\0';
-    printf("client: received modulus   = ");
-    printf("%s\n", buffer);
     server_pk.modulus = BN_new();
-    r = BN_hex2bn(&server_pk.modulus, buffer);
+    r = recv_bn_msg(sockfd, server_pk.modulus,
+		    "client: received server modulus   = ");
     if (!r) {
-	perror("Failed mulmask hex2bn");
+	perror("Failed to recv bn message \"server modulus\"");
 	close(sockfd);
 	return FAILURE;
     }
+
     // 2nd: the generator
-    memset(buffer, 0, MAX_MSG_LEN);
-    r = recv(sockfd, buffer, MAX_MSG_LEN-1, 0);
-    if ( r  == -1 ) {
-	perror("recv pk2");
-	close(sockfd);
-	return FAILURE;
-    }
-    buffer[r] = '\0';
-    printf("client: received generator = ");
-    printf("%s\n", buffer);
     server_pk.generator = BN_new();
-    r = BN_hex2bn(&server_pk.generator, buffer);
+    r = recv_bn_msg(sockfd, server_pk.generator,
+		    "client: received server generator   = ");
     if (!r) {
-	perror("Failed mulmask hex2bn");
+	perror("Failed to recv bn message \"server generator\"");
 	close(sockfd);
 	return FAILURE;
     }
     // 3rd: the mul_mask
-    memset(buffer, 0, MAX_MSG_LEN);
-    r = recv(sockfd, buffer, MAX_MSG_LEN-1, 0);
-    if ( r  == -1 ) {
-	perror("recv pk2");
-	close(sockfd);
-	return FAILURE;
-    }
-    buffer[r] = '\0';
-    printf("client: received mul_mask  = ");
-    printf("%s\n", buffer);
     server_pk.mul_mask = BN_new();
-    r = BN_hex2bn(&server_pk.mul_mask, buffer);
+    r = recv_bn_msg(sockfd, server_pk.mul_mask,
+		    "client: received server mul_mask   = ");
     if (!r) {
-	perror("Failed mulmask hex2bn");
+	perror("Failed to recv bn message \"server mul_mask\"");
 	close(sockfd);
 	return FAILURE;
     }
+    printf("Finished receiving server pk\n"); TTICK;
 
     // Receive ciphertext in two sequential
     // messages of c1 and c2
+    printf("Started receiving Enc_pkS(server list)\n"); TTICK;
+    server_cipher = calloc(num_entries, sizeof(*server_cipher));
     for (int i = 0; i < num_entries; i++) {
 	// Recv c1
-	memset(buffer, 0, MAX_MSG_LEN);
-	r = recv(sockfd, buffer,MAX_MSG_LEN-1,0);
-	if ( r  == -1 ) {
-	    perror("Failed to recv c1");
-	    close(sockfd);
-	    return FAILURE;
-	}
-	buffer[r] = '\0';
-	printf("client: received c1 '%s'\n",
-	       buffer);
 	server_cipher[i].c1 = BN_new();
-	r = BN_hex2bn(&server_cipher[i].c1,
-		      buffer);
+	r = recv_bn_msg(sockfd, server_cipher[i].c1,
+			"client: received server_cipher.c1   = ");
 	if (!r) {
-	    perror("Failed to hex2bn c1");
+	    perror("Failed to recv bn message \"server_cipher.c1\"");
 	    close(sockfd);
 	    return FAILURE;
 	}
 	// Recv c2
-	memset(buffer, 0, MAX_MSG_LEN);
-	r = recv(sockfd, buffer,MAX_MSG_LEN-1,0);
-	if ( r  == -1 ) {
-	    perror("Failed to recv c2");
-	    close(sockfd);
-	    return FAILURE;
-	}
-	buffer[r] = '\0';
-	printf("client: received c2 '%s'\n",
-	       buffer);
 	server_cipher[i].c2 = BN_new();
-	r = BN_hex2bn(&server_cipher[i].c2,
-		      buffer);
+	r = recv_bn_msg(sockfd, server_cipher[i].c2,
+			"client: received server_cipher.c2   = ");
 	if (!r) {
-	    perror("Failed to hex2bn c1");
+	    perror("Failed to recv bn message \"server_cipher.c2\"");
 	    close(sockfd);
 	    return FAILURE;
 	}
     }
+    printf("Finished receiving Enc_pkS(server list)\n\n"); TTICK;
 
-    // Generate client list entries
-    // i.e. {1, 2, 3}
-    /* srand (time(NULL)); */
-    for (int i = 0; i < num_entries; i++) {
-	//plain[i]  = ((uint64_t) rand()) * i;
-	//plain[i] %= ((1ULL) << 32);
-	plain[i] = (uint64_t)i + (uint64_t)1ULL;
-	printf("plain[%i] = %" PRIu64 "\n",
-	       i, plain[i]);
+    // Parse client list entries from <filename>
+    plain = calloc(num_entries, sizeof(uint64_t));
+    r = parse_file_for_list_entries(&plain, num_entries, filename);
+    if (!r) {
+	perror("Failed to parse file for list entries");
+	close(sockfd);
+	return FAILURE;
     }
-    printf("generated client list\n");
+    /* r = generate_list_entries(&plain, num_entries); */
+    printf("parsed client list\n");
 
     // Calculate the mult inv of the client list
     // entries
+    printf("Started computing mask Enc_pkS(server list) * Enc_pkS(inv client list)\n"); TTICK;
     BN_CTX *ctx = BN_CTX_new();
     BIGNUM *bn_plain[num_entries];
     BIGNUM *bn_inv_plain[num_entries];
@@ -435,9 +298,6 @@ client_run_pli (int                  sockfd,
 	    close(sockfd);
 	    return FAILURE;
 	}
-	printf("bn_plain: ");
-	r = BN_print_fp(stdout, bn_plain[i]);
-	printf("\n");
 	bn_inv_plain[i] =
 	    BN_mod_inverse(NULL, bn_plain[i],
 			   server_pk.modulus,
@@ -450,10 +310,8 @@ client_run_pli (int                  sockfd,
     }
     // Encrypt inverse of client list entries
     // under the server public key
+    client_cipher = calloc(num_entries, sizeof(*client_cipher));
     for (int i = 0; i < num_entries; i++) {
-	printf("bn_inv_plain: ");
-	r = BN_print_fp(stdout, bn_inv_plain[i]);
-	printf("\n");
 	if (htype == AH) {
 	    r = ah_elgamal_encrypt(&client_cipher[i],
 				   &server_pk,
@@ -512,66 +370,29 @@ client_run_pli (int                  sockfd,
 		    rand_exponent[i],
 		    server_pk.modulus);
     }
+    printf("Finished computing mask Enc_pkS(server list) * Enc_pkS(inv client list)\n"); TTICK;
 
     // Send exp_res to the server
-    char *hex;
+    printf("Started sending mask Enc_pkS(server list) * Enc_pkS(inv client list)\n"); TTICK;
     for (int i = 0; i < num_entries; i++) {
 	// Send c1
-	memset(buffer, 0, MAX_MSG_LEN);
-        hex = BN_bn2hex(exp_res[i].c1);
-	if (!hex) {
-	    perror("Error bn2hex exp.c1");
-	    close(sockfd);
-	    return FAILURE;
-	}
-	r = strlcpy(buffer, hex,
-		    strnlen(hex, MAX_MSG_LEN));
+	r = send_bn_msg(sockfd, exp_res[i].c1,
+			"client: sent exp_res.c1");
 	if (!r) {
-	    perror("Error strlcpy hex2buffer");
+	    perror("Failed to send bn message \"exp_res.c1\"");
 	    close(sockfd);
 	    return FAILURE;
 	}
-	free(hex);
-	sleep(1);
-	r = send(sockfd, buffer,
-		 strnlen(buffer, MAX_MSG_LEN),
-		 0);
-	if (r == -1) {
-	    perror("Failed to send c1");
-	    close(sockfd);
-	    return FAILURE;
-	}
-	printf("client(%d): ", r);
-	printf("sent c1 \'%s\'\n", buffer);
 	// Send C2
-	memset(buffer, 0, MAX_MSG_LEN);
-	hex = BN_bn2hex(exp_res[i].c2);
-	if (!hex) {
-	    perror("Error bn2hex exp.c2");
-	    close(sockfd);
-	    return FAILURE;
-	}
-	r = strlcpy(buffer, hex,
-		    strnlen(hex, MAX_MSG_LEN));
+	r = send_bn_msg(sockfd, exp_res[i].c2,
+			"client: sent exp_res.c2");
 	if (!r) {
-	    perror("Error strlcpy hex2buffer");
+	    perror("Failed to send bn message \"exp_res.c2\"");
 	    close(sockfd);
 	    return FAILURE;
 	}
-	free(hex);
-	sleep(1);
-	r = send(sockfd, buffer,
-		 strnlen(buffer, MAX_MSG_LEN),
-		 0);
-	if (r == -1) {
-	    perror("Failed to send exp c2");
-	    close(sockfd);
-	    return FAILURE;
-	}
-	printf("client(%d): ", r);
-	printf("sent c2 \'%s\'\n",
-	       buffer);
     }
+    printf("Finished sending mask Enc_pkS(server list) * Enc_pkS(inv client list)\n"); TTICK;
 
     close(sockfd);
     BN_free(client_keys.pk->modulus);
@@ -583,6 +404,7 @@ client_run_pli (int                  sockfd,
     BN_free(server_pk.modulus);
     BN_free(server_pk.generator);
     BN_free(server_pk.mul_mask);
+    free(plain);
     for (int i = 0; i < num_entries; i++) {
 	BN_free(bn_plain[i]);
 	BN_free(bn_inv_plain[i]);
@@ -594,7 +416,8 @@ client_run_pli (int                  sockfd,
 	BN_free(server_cipher[i].c1);
 	BN_free(server_cipher[i].c2);
     }
-    free(buffer);
+    free(server_cipher);
+    free(client_cipher);
     BN_CTX_free(ctx);
     return SUCCESS;
 }

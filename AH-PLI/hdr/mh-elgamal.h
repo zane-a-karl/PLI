@@ -14,4 +14,8 @@ mh_elgamal_decrypt (BIGNUM        *bn_plaintext,
 		    GamalKeys             *keys,
 		    GamalCiphertext *ciphertext);
 
+int
+mh_skip_decrypt_check_equality (GamalKeys             *keys,
+				GamalCiphertext *ciphertext);
+
 #endif//_MH_ELGAMAL_H_
