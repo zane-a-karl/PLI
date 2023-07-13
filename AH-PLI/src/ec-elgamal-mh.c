@@ -12,6 +12,7 @@ mh_ec_elgamal_encrypt (EcGamalCiphertext *cipher,
     BIGNUM *x3;
     BIGNUM *ax;
     BIGNUM *three = NULL;
+    BIGNUM *one = NULL;
     EC_POINT *ecpt_plain;
     BN_CTX *ctx = BN_CTX_new();
     if (!ctx)            { r = 0; perror("Failed to create new ctx"); return FAILURE; }
@@ -24,13 +25,16 @@ mh_ec_elgamal_encrypt (EcGamalCiphertext *cipher,
     ax = BN_new();
     if (!ax)             { r = 0; perror("Failed to make new bn"); return FAILURE; }
     three = BN_new();
-    if (!three)          { r = 0; perror("Failed to make new bn"); return FAILURE; }    
+    if (!three)          { r = 0; perror("Failed to make new bn"); return FAILURE; }
+    one = BN_new();
+    if (!one)            { r = 0; perror("Failed to make new bn"); return FAILURE; }
     cipher->c1 = EC_POINT_new(pk->group);
     if (!cipher->c1) { r = 0; perror("Failed to make new ecpt"); return FAILURE; }
     cipher->c2 = EC_POINT_new(pk->group);
     if (!cipher->c2) { r = 0; perror("Failed to make new ecpt"); return FAILURE; }
 
     // Map plaintext to curve
+    // curve equation defined at https://www.openssl.org/docs/man3.1/man3/EC_GROUP_get_curve.html
     // y^2 = x^3 + ax + b
     r &= BN_set_word(three, 3ULL);
     if (!r)    { perror("Failed to set 3"); return FAILURE; }

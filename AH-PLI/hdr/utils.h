@@ -74,7 +74,7 @@ parse_file_for_num_entries (int        *num_entries,
 			    char         *filename);
 
 int
-parse_file_for_list_entries (uint64_t    **entries,
+parse_file_for_list_entries (BIGNUM      **entries,
 			     int       num_entries,
 			     char        *filename);
 

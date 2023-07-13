@@ -227,12 +227,12 @@ parse_file_for_num_entries (int       *num_entries,
 }
 
 int
-parse_file_for_list_entries (uint64_t    **entries,
+parse_file_for_list_entries (BIGNUM      **entries,
 			     int       num_entries,
 			     char        *filename)
 {
     FILE *fin;
-    char buf[MAX_FILE_BYTES];
+    char *buf = calloc(MAX_FILE_BYTES, sizeof(char));
     int c, r;
     int entries_i = 0, buf_i = 0;
 
@@ -242,7 +242,7 @@ parse_file_for_list_entries (uint64_t    **entries,
 	return FAILURE;
     }
 
-    memset(buf, 0, sizeof(buf));
+    memset(buf, 0, MAX_FILE_BYTES);
     do {
 	c = fgetc(fin);
 	if (isdigit(c)) {
@@ -250,20 +250,23 @@ parse_file_for_list_entries (uint64_t    **entries,
 		buf[buf_i++] = c;
 		c = fgetc(fin);
 	    } while(isdigit(c));
-	    r = sscanf(buf, "%llu", &(*entries)[entries_i]);
+	    r = BN_dec2bn(&entries[entries_i], buf);
+	    /* r = sscanf(buf, "%llu", &(*entries)[entries_i]); */
 	    entries_i++;
 	    if (r == EOF) {
 		perror("Failed to sscanf buf into entries");
 		return FAILURE;
 	    }
-	    memset(buf, 0, sizeof(buf));
+	    memset(buf, 0, MAX_FILE_BYTES);
 	    buf_i = 0;
 	}
     } while (!feof(fin) && !ferror(fin));
 
     for (int i = 0; i < num_entries; i++) {
-	printf("entries[%i] = %" PRIu64 "\n", i, (*entries)[i]);
+	/* printf("entries[%i] = %" PRIu64 "\n", i, (*entries)[i]); */
+	printf("entries[%i] = ", i); BN_print_fp(stdout, entries[i]); printf("\n");
     }
+    free(buf);
     r = fclose(fin);
     if (r == EOF) {
 	perror("Failed to close input file");
@@ -429,17 +432,9 @@ recv_msg_length (int   file_descriptor,
 
     fixed_buf = calloc(FIXED_LEN+1, sizeof(char));
     r = recv(file_descriptor, fixed_buf, FIXED_LEN, 0);
-    if (r  == -1) {
-	perror("Failed to recv bn message");
-	close(file_descriptor);
-	return FAILURE;
-    }
+    if (r == -1) { perror("Failed to recv message len"); return FAILURE; }
     r = sscanf(fixed_buf, "%lu", length);
-    if (r == EOF) {
-	perror("Failed to sscanf msg_buffer_len");
-	close(file_descriptor);
-	return FAILURE;
-    }
+    if (r == EOF) { perror("Failed to sscanf msg_buffer_len"); return FAILURE; }
     free(fixed_buf);
     return SUCCESS;
 }
@@ -451,10 +446,7 @@ deserialize_bignum (BIGNUM **msg,
     int r;
 
     r = BN_hex2bn(msg, buf);
-    if (!r) {
-	perror("Failed hex2bn hex buf");
-	return FAILURE;
-    }
+    if (!r) { perror("Failed hex2bn hex buf"); return FAILURE; }
     return SUCCESS;
 }
 

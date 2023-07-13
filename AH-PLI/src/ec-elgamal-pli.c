@@ -21,7 +21,7 @@ server_run_ec_elgamal_pli (int                  new_fd,
     EcGamalKeys server_keys;
     EcGamalCiphertext *server_cipher;
     EcGamalCiphertext *client_cipher;
-    uint64_t *plain;
+    /* uint64_t *plain; */
     BIGNUM **bn_plain;
     BN_CTX *ctx = BN_CTX_new();
 
@@ -36,11 +36,40 @@ server_run_ec_elgamal_pli (int                  new_fd,
     if (!r) { perror("Failed to parse file for number of list entries"); return FAILURE; }
 
     // Parse server list entries from <filename>
-    plain = calloc(num_entries, sizeof(uint64_t));
-    r &= parse_file_for_list_entries(&plain, num_entries, filename);
-    if (!r) { perror("Failed to parse file for list entries"); return FAILURE; }
+    /* plain = calloc(num_entries, sizeof(uint64_t)); */
+    bn_plain = calloc(num_entries, sizeof(*bn_plain));
+    for (int i=0; i < num_entries; i++) {
+	bn_plain[i] = BN_new();
+	if (!bn_plain[i]) { r = 0; perror("Failed to alloc bn_plain"); }
+    }
+    r &= parse_file_for_list_entries(bn_plain, num_entries, filename);
     /* r = generate_list_entries(&plain, num_entries); */
+    if (!r) { perror("Failed to parse file for list entries"); return FAILURE; }
     printf("parsed server list\n");
+
+    /* BIGNUM *x = BN_new(); */
+    /* BIGNUM *y = BN_new(); */
+    /* EC_POINT *p = EC_POINT_new(server_keys.pk->group); */
+    /* char *xx = calloc(40, sizeof(char)); */
+    /* bn_plain = calloc(num_entries, sizeof(*bn_plain));     */
+    /* for (int i = 0; i < num_entries; i++) { */
+    /* 	bn_plain[i] = BN_new(); */
+    /* 	r &= BN_set_word(bn_plain[i], plain[i]); */
+    /* 	if (!r) { perror("Failed to set ptxt2bn"); return FAILURE; }	 */
+    /* 	r &= EC_POINT_mul(server_keys.pk->group, p, bn_plain[i], NULL, NULL, ctx); */
+    /* 	if (!r) { perror("Failed to calc G(rand)"); return FAILURE; } */
+    /* 	r = EC_POINT_get_affine_coordinates(server_keys.pk->group, p, */
+    /* 					    x, y, ctx); */
+    /* 	if (!r) {perror("Failed to get affine coords"); return FAILURE; } */
+    /* 	xx = BN_bn2dec(x);	 */
+    /* 	printf("x = "); printf("%s", xx); printf("\n"); */
+    /* 	for (int j = 0; j < 40; j++) { */
+    /* 	    printf("iteration#%i,  ", j); */
+    /* 	    xx[j] = 0; */
+    /* 	} */
+    /* } */
+    /* BN_free(x); BN_free(y); EC_POINT_free(p); */
+    /* return FAILURE;     */
 
     // Send server pk to client
     printf("Started sending server pk\n"); TTICK;
@@ -62,13 +91,14 @@ server_run_ec_elgamal_pli (int                  new_fd,
     printf("Finished sending server pk\n\n"); TTICK;
 
     // Encrypt server list entries and send them to client
+    // [1, 2, 24]
     printf("Started sending Enc_pkS(server list)\n"); TTICK;
-    bn_plain = calloc(num_entries, sizeof(*bn_plain));
+    /* bn_plain = calloc(num_entries, sizeof(*bn_plain)); */
     server_cipher = calloc(num_entries, sizeof(*server_cipher));
     for (int i=0; i < num_entries; i++) {
-	bn_plain[i] = BN_new();
-	r &= BN_set_word(bn_plain[i], plain[i]);
-	if (!r) { perror("Failed to set ptxt2bn"); return FAILURE; }
+	/* bn_plain[i] = BN_new(); */
+	/* r &= BN_set_word(bn_plain[i], plain[i]); */
+	/* if (!r) { perror("Failed to set ptxt2bn"); return FAILURE; } */
 	if (htype == AH) {
 	    r &= ah_ec_elgamal_encrypt(&server_cipher[i],
 				       server_keys.pk,
@@ -93,18 +123,18 @@ server_run_ec_elgamal_pli (int                  new_fd,
     printf("Finished sending Enc_pkS(server list)\n\n"); TTICK;
 
     // Recv exp_res entries from client
-    printf("Started receiving masked Enc_pkS(server list) * Enc_pkS(inv client list)\n"); TTICK;
+    printf("Started receiving mask(Enc_pkS(server list) * Enc_pkS(inv client list))\n"); TTICK;
     client_cipher = calloc(num_entries, sizeof(*client_cipher));
     for (int i=0; i<num_entries; i++) {
 	// Recv C1
 	client_cipher[i].c1 = EC_POINT_new(server_keys.pk->group);
-	r &= recv_msg(new_fd, (void *)&client_cipher[i].c1,
+	r &= recv_msg(new_fd, &client_cipher[i].c1,
 		      "server: recv client_cipher.c1",
 		      Ecpoint, server_keys.pk->group);
 	if (!r) { perror("Failed to recv client_cipher.c1"); return FAILURE; }
 	// Recv C2
 	client_cipher[i].c2 = EC_POINT_new(server_keys.pk->group);
-	r &= recv_msg(new_fd, (void *)&client_cipher[i].c2,
+	r &= recv_msg(new_fd, &client_cipher[i].c2,
 		      "server: recv client_cipher.c2",
 		      Ecpoint, server_keys.pk->group);
 	if (!r) { perror("Failed to recv client_cipher.c2"); return FAILURE; }
@@ -134,7 +164,7 @@ server_run_ec_elgamal_pli (int                  new_fd,
     BN_free(server_keys.pk->b);
     free(server_keys.pk);
     BN_free(server_keys.sk);
-    free(plain);
+    /* free(plain); */
     for (int i=0; i<num_entries; i++) {
 	EC_POINT_free(client_cipher[i].c1);
 	EC_POINT_free(client_cipher[i].c2);
@@ -165,7 +195,8 @@ client_run_ec_elgamal_pli (int                  sockfd,
     EcGamalPk server_pk;
     EcGamalCiphertext *server_cipher;
     EcGamalCiphertext *client_cipher;
-    uint64_t *plain;
+    /* uint64_t *plain; */
+    BIGNUM **bn_plain;
     BN_CTX *ctx = BN_CTX_new();
 
     // Parse number of list entries from <filename>
@@ -199,8 +230,14 @@ client_run_ec_elgamal_pli (int                  sockfd,
 		  Ecpoint, server_pk.group);
     if (!r) { perror("Failed to recv server pk point"); return FAILURE; }
     // 5th: the parameters p, a, and b
+    server_pk.p = BN_new();
+    server_pk.a = BN_new();
+    server_pk.b = BN_new();
     r &= EC_GROUP_get_curve(server_pk.group, server_pk.p, server_pk.a, server_pk.b, ctx);
     if (!r) { perror("Failed to get curve params"); return FAILURE; }
+    printf("pk.p = "); BN_print_fp(stdout, server_pk.p); printf("\n");
+    printf("pk.a = "); BN_print_fp(stdout, server_pk.a); printf("\n");
+    printf("pk.b = "); BN_print_fp(stdout, server_pk.b); printf("\n");
     printf("Finished receiving server pk\n"); TTICK;
 
     // Receive ciphertext in two sequential messages of c1 and c2
@@ -223,20 +260,25 @@ client_run_ec_elgamal_pli (int                  sockfd,
     printf("Finished receiving Enc_pkS(server list)\n\n"); TTICK;
 
     // Parse client list entries from <filename>
-    plain = calloc(num_entries, sizeof(uint64_t));
-    r &= parse_file_for_list_entries(&plain, num_entries, filename);
+    // [1, 2, 3]
+    bn_plain = calloc(num_entries, sizeof(*bn_plain));
+    for (int i = 0; i < num_entries; i++) {
+	bn_plain[i] = BN_new();
+	if (!r) { perror("Failed to alloc bn_plain"); return FAILURE; }
+    }
+    r &= parse_file_for_list_entries(bn_plain, num_entries, filename);
     /* r &= generate_list_entries(&plain, num_entries); */
     if (!r) { perror("Failed to parse file for list entries"); return FAILURE; }
     printf("parsed client list\n");
 
     // Calculate the mult inv of the client list entries
-    printf("Started computing mask Enc_pkS(server list) * Enc_pkS(inv client list)\n"); TTICK;
-    BIGNUM *bn_plain[num_entries];
+    printf("Started computing mask(Enc_pkS(server list) * Enc_pkS(inv client list))\n"); TTICK;
+    /* BIGNUM *bn_plain[num_entries]; */
     BIGNUM *bn_inv_plain[num_entries];
     for (int i = 0; i < num_entries; i++) {
-	bn_plain[i] = BN_new();
-	r &= BN_set_word(bn_plain[i], plain[i]);
-	if (!r) { perror("Failed to set bn_plain"); return FAILURE; }
+	/* bn_plain[i] = BN_new(); */
+	/* r &= BN_set_word(bn_plain[i], plain[i]); */
+	/* if (!r) { perror("Failed to set bn_plain"); return FAILURE; } */
 	bn_inv_plain[i] = BN_mod_inverse(NULL, bn_plain[i], server_pk.p, ctx);
 	if (!bn_inv_plain[i]) { perror("Failed to invert bn_plain"); return FAILURE; }
     }
@@ -311,7 +353,7 @@ client_run_ec_elgamal_pli (int                  sockfd,
     BN_free(server_pk.p);
     BN_free(server_pk.a);
     BN_free(server_pk.b);
-    free(plain);
+    /* free(plain); */
     for (int i = 0; i < num_entries; i++) {
 	BN_free(bn_plain[i]);
 	BN_free(bn_inv_plain[i]);

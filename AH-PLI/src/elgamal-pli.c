@@ -20,7 +20,7 @@ server_run_elgamal_pli (int                  new_fd,
     GamalKeys server_keys;
     GamalCiphertext *server_cipher;
     GamalCiphertext *client_cipher;
-    uint64_t *plain;
+    /* uint64_t *plain; */
     BIGNUM **bn_plain;
     BN_CTX *ctx = BN_CTX_new();
 
@@ -35,9 +35,14 @@ server_run_elgamal_pli (int                  new_fd,
     if (!r) { perror("Failed to parse file for number of list entries"); return FAILURE; }
 
     // Parse server list entries from <filename>
-    plain = calloc(num_entries, sizeof(uint64_t));
-    r &= parse_file_for_list_entries(&plain, num_entries, filename);
-    /* r &= generate_list_entries(&plain, num_entries); */    
+    /* plain = calloc(num_entries, sizeof(uint64_t)); */
+    bn_plain = calloc(num_entries, sizeof(*bn_plain));
+    for (int i=0; i < num_entries; i++) {
+	bn_plain[i] = BN_new();
+	if (!bn_plain[i]) {r = 0; perror("Failed to alloc bn_plain"); return FAILURE; }
+    }
+    r &= parse_file_for_list_entries(bn_plain, num_entries, filename);
+    /* r &= generate_list_entries(&plain, num_entries); */
     if (!r) { perror("Failed to parse file for list entries"); return FAILURE; }
     printf("parsed server list\n");
 
@@ -56,13 +61,13 @@ server_run_elgamal_pli (int                  new_fd,
 
     // encrypt server list entries and send them to client
     printf("Started sending Enc_pkS(server list)\n"); TTICK;
-    bn_plain = calloc(num_entries, sizeof(*bn_plain));
+    /* bn_plain = calloc(num_entries, sizeof(*bn_plain)); */
     server_cipher = calloc(num_entries, sizeof(*server_cipher));
     for (int i=0; i < num_entries; i++) {
-	bn_plain[i] = BN_new();
-	if (!bn_plain[i]) {r = 0; perror("Failed to alloc bn_plain"); return FAILURE; }
-	r &= BN_set_word(bn_plain[i], plain[i]);
-	if (!r) { perror("Failed to ptxt2bn"); return FAILURE; }
+	/* bn_plain[i] = BN_new(); */
+	/* if (!bn_plain[i]) {r = 0; perror("Failed to alloc bn_plain"); return FAILURE; } */
+	/* r &= BN_set_word(bn_plain[i], plain[i]); */
+	/* if (!r) { perror("Failed to ptxt2bn"); return FAILURE; } */
 	if (htype == AH) {
 	    r &= ah_elgamal_encrypt(&server_cipher[i], *server_keys.pk, bn_plain[i]);
 	} else {
@@ -84,12 +89,12 @@ server_run_elgamal_pli (int                  new_fd,
     for (int i=0; i<num_entries; i++) {
 	// Recv C1
 	client_cipher[i].c1 = BN_new();
-	if (!client_cipher[i].c1) {r = 0; perror("Failed to alloc client_cipher.c1");  return FAILURE;}	
+	if (!client_cipher[i].c1) {r = 0; perror("Failed to alloc client_cipher.c1");  return FAILURE;}
 	r &= recv_msg(new_fd, &client_cipher[i].c1, "server: recv client_cipher.c1", Bignum);
 	if (!r) { perror("Failed to recv client_cipher.c1"); return FAILURE; }
 	// Recv C2
 	client_cipher[i].c2 = BN_new();
-	if (!client_cipher[i].c2) {r = 0; perror("Failed to alloc client_cipher.c2"); return FAILURE; }		
+	if (!client_cipher[i].c2) {r = 0; perror("Failed to alloc client_cipher.c2"); return FAILURE; }
 	r &= recv_msg(new_fd, &client_cipher[i].c2, "server: recv client_cipher.c2", Bignum);
 	if (!r) { perror("Failed to recv client_cipher.c2"); return FAILURE; }
     }
@@ -115,7 +120,7 @@ server_run_elgamal_pli (int                  new_fd,
     free(server_keys.pk);
     BN_free(server_keys.sk->secret);
     free(server_keys.sk);
-    free(plain);
+    /* free(plain); */
     for (int i=0; i<num_entries; i++) {
 	BN_free(client_cipher[i].c1);
 	BN_free(client_cipher[i].c2);
@@ -144,7 +149,8 @@ client_run_elgamal_pli (int                  sockfd,
     GamalPk server_pk;
     GamalCiphertext *server_cipher;
     GamalCiphertext *client_cipher;
-    uint64_t *plain;
+    /* uint64_t *plain; */
+    BIGNUM **bn_plain;
 
     // Parse number of list entries from <filename>
     r = parse_file_for_num_entries(&num_entries, filename);
@@ -185,21 +191,26 @@ client_run_elgamal_pli (int                  sockfd,
     printf("Finished receiving Enc_pkS(server list)\n\n"); TTICK;
 
     // Parse client list entries from <filename>
-    plain = calloc(num_entries, sizeof(uint64_t));
-    r &= parse_file_for_list_entries(&plain, num_entries, filename);
-    /* r &= generate_list_entries(&plain, num_entries); */    
+    /* plain = calloc(num_entries, sizeof(uint64_t)); */
+    bn_plain = calloc(num_entries, sizeof(*bn_plain));
+    for (int i=0; i < num_entries; i++) {
+	bn_plain[i] = BN_new();
+	if (!bn_plain[i]) {r = 0; perror("Failed to alloc bn_plain"); return FAILURE; }
+    }
+    r &= parse_file_for_list_entries(bn_plain, num_entries, filename);
+    /* r &= generate_list_entries(&plain, num_entries); */
     if (!r) { perror("Failed to parse file for list entries"); return FAILURE; }
     printf("parsed client list\n");
 
     // Calculate the mult inv of the client list entries
     printf("Started computing (Enc_pkS(server list) * Enc_pkS(inv client list))^mask \n"); TTICK;
     BN_CTX *ctx = BN_CTX_new();
-    BIGNUM *bn_plain[num_entries];
+    /* BIGNUM *bn_plain[num_entries]; */
     BIGNUM *bn_inv_plain[num_entries];
     for (int i = 0; i < num_entries; i++) {
-	bn_plain[i] = BN_new();
-	r &= BN_set_word(bn_plain[i], plain[i]);
-	if (!r) { perror("Failed to set bn_plain"); return FAILURE; }
+	/* bn_plain[i] = BN_new(); */
+	/* r &= BN_set_word(bn_plain[i], plain[i]); */
+	/* if (!r) { perror("Failed to set bn_plain"); return FAILURE; } */
 	bn_inv_plain[i] = BN_mod_inverse(NULL, bn_plain[i], server_pk.modulus, ctx);
 	if (!bn_inv_plain[i]) { r = 0; perror("Failed to invert bn_plain"); return FAILURE; }
     }
@@ -259,7 +270,7 @@ client_run_elgamal_pli (int                  sockfd,
     BN_free(server_pk.modulus);
     BN_free(server_pk.generator);
     BN_free(server_pk.mul_mask);
-    free(plain);
+    /* free(plain); */
     for (int i = 0; i < num_entries; i++) {
 	BN_free(bn_plain[i]);
 	BN_free(bn_inv_plain[i]);
@@ -267,7 +278,7 @@ client_run_elgamal_pli (int                  sockfd,
 	BN_free(mul_res[i].c1);
 	BN_free(mul_res[i].c2);
 	BN_free(exp_res[i].c1);
-	BN_free(exp_res[i].c2);	
+	BN_free(exp_res[i].c2);
 	BN_free(client_cipher[i].c1);
 	BN_free(client_cipher[i].c2);
 	BN_free(server_cipher[i].c1);

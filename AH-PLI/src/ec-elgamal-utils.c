@@ -55,9 +55,12 @@ generate_ec_elgamal_keys (EcGamalKeys *keys)
     keys->pk->b = BN_new();
     r &= EC_GROUP_get_curve(keys->pk->group, keys->pk->p, keys->pk->a, keys->pk->b, ctx);
     if (!r) { perror("Failed to get curve params"); return FAILURE; }
+    printf("pk.p = "); BN_print_fp(stdout, keys->pk->p); printf("\n");
+    printf("pk.a = "); BN_print_fp(stdout, keys->pk->a); printf("\n");
+    printf("pk.b = "); BN_print_fp(stdout, keys->pk->b); printf("\n");
     // Check if it's indeed prime
     r &= BN_check_prime(keys->pk->p, ctx, NULL);
-    if (!r) { perror("Failed to generate true prime"); return FAILURE; }    
+    if (!r) { perror("Failed to generate true prime"); return FAILURE; }
 
     BN_CTX_free(ctx);
     if (!r) {
@@ -114,13 +117,13 @@ ec_elgamal_skip_decrypt_check_equality (EcGamalKeys       keys,
 {
     int r = 1;
     EC_POINT *c1_x_sk;
-    EC_POINT *ecpt_plain;    
+    EC_POINT *ecpt_plain;
     BN_CTX *ctx = BN_CTX_new();
     if (!ctx) { r = 0; perror("Failed to create new ctx"); return FAILURE; }
     c1_x_sk = EC_POINT_new(keys.pk->group);
     if (!c1_x_sk) { r = 0; perror("Failed to make new ecpt"); return FAILURE; }
     ecpt_plain = EC_POINT_new(keys.pk->group);
-    if (!ecpt_plain) { r = 0; perror("Failed to make new ecpt"); return FAILURE; }    
+    if (!ecpt_plain) { r = 0; perror("Failed to make new ecpt"); return FAILURE; }
 
     // Calculate c1 * keys.sk
     r &= EC_POINT_mul(keys.pk->group, c1_x_sk, NULL, cipher.c1, keys.sk, ctx);
@@ -130,10 +133,10 @@ ec_elgamal_skip_decrypt_check_equality (EcGamalKeys       keys,
 	printf("Found a match!\n");
     } else {
 	printf("Not a match.\n");
-    }    
+    }
 
     EC_POINT_free(c1_x_sk);
-    EC_POINT_free(ecpt_plain);    
+    EC_POINT_free(ecpt_plain);
     BN_CTX_free(ctx);
     if (!r) {
 	return FAILURE;
@@ -168,7 +171,7 @@ ec_elgamal_skip_dlog_check_is_at_infinity (EcGamalKeys         keys,
 	printf("Found a match!\n");
     } else {
 	printf("Not a match.\n");
-    }        
+    }
 
     EC_POINT_free(c1_x_sk);
     EC_POINT_free(ecpt_plain);
