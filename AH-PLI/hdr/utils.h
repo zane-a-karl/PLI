@@ -7,7 +7,9 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <openssl/bn.h>
+#include <openssl/ec.h>
 #include <signal.h>     // sigemptyset()
+#include <stdarg.h>     // va_start(), va_arg(), va_end()
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>     // memset()
@@ -20,11 +22,17 @@
 #define SUCCESS 1
 #define FAILURE 0
 #define FIXED_LEN 10
-#define MAX_MSG_LEN 256
+#define MAX_MSG_LEN 2048
 #define MAX_FILE_BYTES 256
+#define SEC_PAR 1024
+#define EC_SEC_PAR 32
 
 enum PartyType {
     CLIENT, SERVER
+};
+
+enum MessageType {
+    Bignum, Ecpoint, Integer
 };
 
 void *
@@ -74,17 +82,51 @@ char *
 pad_leading_zeros (char *msg);
 
 int
-send_bn_msg_length (int file_descriptor,
-		    unsigned long length);
+serialize_int (char **serialized,
+	       int          *msg);
 
 int
-send_bn_msg (int file_descriptor,
-	     BIGNUM     *message,
-	     char      *conf_str);
+serialize_ecpoint (char   **serialized,
+		   EC_POINT       *msg,
+		   EC_GROUP     *group);
 
 int
-recv_bn_msg (int file_descriptor,
-	     BIGNUM     *message,
-	     char      *conf_str);
+serialize_bignum (char   **serialized,
+		  BIGNUM         *msg);
+
+int
+send_msg_length (int  file_descriptor,
+		 unsigned long length);
+
+int
+send_msg (int    file_descriptor,
+	  void              *msg,
+	  char         *conf_str,
+	  enum MessageType mtype,
+	  ...);
+
+int
+recv_msg_length (int   file_descriptor,
+		 unsigned long *length);
+
+int
+deserialize_bignum (BIGNUM **msg,
+		    char    *buf);
+
+int
+deserialize_int (int  *msg,
+		 char *buf);
+
+int
+deserialize_ecpoint (EC_POINT  **msg,
+		     char       *buf,
+		     EC_GROUP *group);
+
+int
+recv_msg (int       file_descriptor,
+	  void                 *msg,
+	  char            *conf_str,
+	  enum MessageType    mtype,
+	  ...);
 
 #endif//_UTILS_H_

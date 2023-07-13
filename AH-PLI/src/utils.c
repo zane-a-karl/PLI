@@ -295,84 +295,134 @@ pad_leading_zeros (char *msg)
 }
 
 int
-send_bn_msg_length (int file_descriptor,
-		    unsigned long length)
+serialize_int (char **serialized,
+	       int          *msg)
+{
+    int r;
+
+    *serialized = calloc(FIXED_LEN, sizeof(char));
+    /* *serialized is null-terminated by this fn */
+    r = snprintf(*serialized, FIXED_LEN, "%d", *msg);
+    if (r == 0) {
+	perror("Failed to snprintf msg");
+	return FAILURE;
+    }
+    return SUCCESS;
+}
+
+int
+serialize_ecpoint (char   **serialized,
+		   EC_POINT       *msg,
+		   EC_GROUP     *group)
+{
+    BN_CTX *ctx = BN_CTX_new();
+    // *serialized is malloc'd by this fn
+    // to a length sufficient for the hex representation
+    *serialized = EC_POINT_point2hex(group, msg, POINT_CONVERSION_UNCOMPRESSED, ctx);
+    BN_CTX_free(ctx);
+    if (!*serialized) {
+	perror("Failed to point2hex msg");
+	return FAILURE;
+    }
+    return SUCCESS;
+}
+
+int
+serialize_bignum (char   **serialized,
+		  BIGNUM         *msg)
+{
+    // buf is null-terminated and
+    // malloc'd by this fn
+    *serialized = BN_bn2hex(msg);
+    if (!*serialized) {
+	perror("Error bn2hex msg");
+	free(*serialized);
+	return FAILURE;
+    }
+    return SUCCESS;
+}
+
+int
+send_msg_length (int file_descriptor,
+		 unsigned long length)
 {
     int r;
     char *fixed_buf;
     unsigned long fixed_buf_num_bytes;
 
+    /* Serialize UL length */
     fixed_buf = calloc(FIXED_LEN, sizeof(char));
     /* fixed_buf is null-terminated by this fn */
     r = snprintf(fixed_buf, FIXED_LEN, "%lu", length);
-    if (r == 0) {
-	perror("Failed to snprintf fixed_buf");
-	close(file_descriptor);
-	free(fixed_buf);
-	return FAILURE;
-    }
+    if (r == 0) { r = 0; perror("Failed to snprintf fixed_buf"); }
     fixed_buf_num_bytes = strnlen(fixed_buf, FIXED_LEN);
     if (fixed_buf_num_bytes < FIXED_LEN) {
 	fixed_buf = pad_leading_zeros(fixed_buf);
     } else {
+	r = 0;
 	perror("Increase fixed length");
-	close(file_descriptor);
-	free(fixed_buf);
-	return FAILURE;
     }
+    /* Send UL length */
     r = send(file_descriptor, fixed_buf, FIXED_LEN, 0);
-    if (r == -1) {
-	perror("Failed to send bn message len");
-	close(file_descriptor);
-	free(fixed_buf);
+    if (r == -1) { r = 0; perror("Failed to send bn message len"); }
+    free(fixed_buf);
+    if (!r) {
 	return FAILURE;
     }
     return SUCCESS;
 }
 
 int
-send_bn_msg (int file_descriptor,
-	     BIGNUM     *message,
-	     char      *conf_str)
+send_msg (int    file_descriptor,
+	  void              *msg,
+	  char         *conf_str,
+	  enum MessageType mtype,
+	  ...)
 {
     int r;
     char *buf;
     unsigned long buf_num_bytes;
+    va_list args_ptr;
 
-    // buf is null-terminated and
-    // malloc'd by this fn
-    buf = BN_bn2hex(message);
-    if (!buf) {
-	perror("Error bn2hex bn message");
-	close(file_descriptor);
-	free(buf);
-	return FAILURE;
+    /* Serialize fns alloc mem for buf */
+    switch (mtype) {
+    case Bignum:
+	r = serialize_bignum(&buf, (BIGNUM *)msg);
+	break;
+    case Ecpoint:
+	va_start(args_ptr, mtype);
+	EC_GROUP *g = va_arg(args_ptr, EC_GROUP *);
+	r = serialize_ecpoint(&buf, (EC_POINT *)msg, g);
+	va_end(args_ptr);
+	break;
+    case Integer:
+	r = serialize_int(&buf, (int *)msg);
+	break;
+    default:
+	r = 0;
+	break;
     }
+    if (!r) { perror("Failed to serialize msg"); }
 
+    // Pre-send the real msg's length first
     buf_num_bytes = strnlen(buf, MAX_MSG_LEN);
-    r = send_bn_msg_length(file_descriptor, buf_num_bytes);
-    if (r == -1) {
-	perror("Failed to send bn message length");
-	close(file_descriptor);
-	free(buf);
-	return FAILURE;
-    }
+    r = send_msg_length(file_descriptor, buf_num_bytes);
+    if (r == -1) { r = 0; perror("Failed to send msg length"); }
+    // Now send the real msg
     r = send(file_descriptor, buf, buf_num_bytes, 0);
-    if (r == -1) {
-	perror("Failed to send bn message");
-	close(file_descriptor);
-	free(buf);
-	return FAILURE;
-    }
-    total_bytes += r;    
+    if (r == -1) { r = 0; perror("Failed to send msg"); }
+    total_bytes += r;
     printf("%s %s\n", conf_str, buf);
     free(buf);
+    if (!r) {
+	return FAILURE;
+    }
     return SUCCESS;
 }
 
 int
-recv_bn_msg_length (int file_descriptor,
-		    unsigned long *length)
+recv_msg_length (int   file_descriptor,
+		 unsigned long *length)
 {
     int r;
     char *fixed_buf;
@@ -394,40 +444,93 @@ recv_bn_msg_length (int file_descriptor,
     return SUCCESS;
 }
 
-/**
- *
- */
 int
-recv_bn_msg (int file_descriptor,
-	     BIGNUM     *message,
-	     char      *conf_str)
+deserialize_bignum (BIGNUM **msg,
+		    char    *buf)
+{
+    int r;
+
+    r = BN_hex2bn(msg, buf);
+    if (!r) {
+	perror("Failed hex2bn hex buf");
+	return FAILURE;
+    }
+    return SUCCESS;
+}
+
+int
+deserialize_int (int  *msg,
+		 char *buf)
+{
+    int r;
+    r = sscanf(buf, "%d", msg);
+    if (r == EOF) {
+	perror("Failed to sscanf msg_buffer_len");
+	return FAILURE;
+    }
+    return SUCCESS;
+}
+
+int
+deserialize_ecpoint (EC_POINT  **msg,
+		     char       *buf,
+		     EC_GROUP *group)
+{
+    EC_POINT *r;
+    BN_CTX *ctx = BN_CTX_new();
+
+    r = EC_POINT_hex2point(group, buf, *msg, ctx);
+    if (!r) {
+	perror("Failed hex2ecpoint buf");
+	return FAILURE;
+    }
+    return SUCCESS;
+}
+
+int
+recv_msg (int       file_descriptor,
+	  void                 *msg,
+	  char            *conf_str,
+	  enum MessageType    mtype,
+	  ...)
 {
     int r;
     char *buf;
     unsigned long buf_num_bytes;
+    va_list args_ptr;
 
     buf = calloc(MAX_MSG_LEN, sizeof(char));
-    r = recv_bn_msg_length(file_descriptor, &buf_num_bytes);
-    if (r == -1) {
-	perror("Failed to recv bn message length");
-	close(file_descriptor);
-	free(buf);
-	return FAILURE;
-    }
+    r = recv_msg_length(file_descriptor, &buf_num_bytes);
+    if (r == -1) { r = 0; perror("Failed to recv msg length"); }
     r = recv(file_descriptor, buf, buf_num_bytes, 0);
-    if ( r  == -1 ) {
-	perror("Failed to recv bn message");
-	close(file_descriptor);
-	return FAILURE;
-    }
+    if ( r  == -1 ) { r = 0; perror("Failed to recv msg"); }
     buf[r] = '\0';
     printf("%s %s\n", conf_str, buf);
-    r = BN_hex2bn(&message, buf);
+    r = SUCCESS;
+
+    /* Deserialize buf into msg */
+    switch (mtype) {
+    case Bignum:
+	r &= deserialize_bignum((BIGNUM **)msg, buf);
+	break;
+    case Ecpoint:
+	va_start(args_ptr, mtype);
+	EC_GROUP *g = va_arg(args_ptr, EC_GROUP *);
+	r &= deserialize_ecpoint((EC_POINT **)msg, buf, g);
+	va_end(args_ptr);
+	break;
+    case Integer:
+	r &= deserialize_int((int *)msg, buf);
+	break;
+    default:
+	r = 0;
+	break;
+    }
+    if (!r) { perror("Failed to deserialize buf"); return FAILURE; }
+
+    free(buf);
     if (!r) {
-	perror("Failed hex2bn hex buf");
-	close(file_descriptor);
 	return FAILURE;
     }
-    free(buf);
     return SUCCESS;
 }

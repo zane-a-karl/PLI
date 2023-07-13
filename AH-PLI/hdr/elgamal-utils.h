@@ -6,9 +6,8 @@
 
 
 typedef struct GamalPk {
-    /* BIGNUM *group; // unneeded*/
-    BIGNUM *modulus;
     BIGNUM *generator;
+    BIGNUM *modulus;
     BIGNUM *mul_mask;
 } GamalPk;
 
@@ -31,14 +30,22 @@ generate_elgamal_keys (GamalKeys *keys);
 
 int
 elgamal_mul (GamalCiphertext *res,
-	     GamalCiphertext   *a,
-	     GamalCiphertext   *b,
+	     GamalCiphertext    a,
+	     GamalCiphertext    b,
 	     BIGNUM      *modulus);
 
 int
 elgamal_exp (GamalCiphertext *res,
-	     GamalCiphertext   *a,
+	     GamalCiphertext    a,
 	     BIGNUM     *exponent,
 	     BIGNUM      *modulus);
+
+int
+elgamal_skip_decrypt_check_equality (GamalKeys              keys,
+				     GamalCiphertext ciphertext);
+
+int
+elgamal_skip_dlog_check_is_one (GamalKeys              keys,
+				GamalCiphertext  ciphertext);
 
 #endif//_ELGAMAL_UTILS_H_

@@ -1,4 +1,4 @@
-#include "../hdr/elgamal-pli.h"
+#include "../hdr/ec-elgamal-pli.h"
 
 
 #define PORT "3490" // the port client will be connecting to
@@ -30,9 +30,9 @@ main (int   argc,
     // Start the protocol
     r = strncmp(homomorphism_type, "AH", 3);
     if (r == 0) {
-	r = client_run_elgamal_pli(sockfd, AH, filename);
+	r = client_run_ec_elgamal_pli(sockfd, AH, filename);
     } else {
-	r = client_run_elgamal_pli(sockfd, MH, filename);
+	r = client_run_ec_elgamal_pli(sockfd, MH, filename);
     }
     if (!r) {
 	close(sockfd);

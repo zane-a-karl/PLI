@@ -1,4 +1,4 @@
-#include "../hdr/elgamal-pli.h"
+#include "../hdr/ec-elgamal-pli.h"
 
 
 #define PORT "3490"      // The port users will be connecting to.
@@ -44,9 +44,9 @@ main (int argc,
 	    // Start the protocol
 	    r = strncmp(homomorphism_type, "AH", 3);
 	    if (r == 0) {
-		r = server_run_elgamal_pli(new_fd, AH, filename);
+		r = server_run_ec_elgamal_pli(new_fd, AH, filename);
 	    } else {
-		r = server_run_elgamal_pli(new_fd, MH, filename);
+		r = server_run_ec_elgamal_pli(new_fd, MH, filename);
 	    }
 	    if (!r) {
 		close(new_fd);

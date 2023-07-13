@@ -9,24 +9,26 @@ SRCS=$(wildcard $(SRC)/*.c)
 HDRS=$(wildcard $(HDR)/*.h)
 OBJS=$(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(SRCS))
 
-UTIL_OBJS=$(filter-out $(OBJ)/%client.o $(OBJ)/%server.o, $(OBJS))
+EG_UTIL_OBJS=$(filter-out $(OBJ)/%client.o $(OBJ)/%server.o $(OBJ)/ec%, $(OBJS))
+ECEG_UTIL_OBJS=$(filter-out $(OBJ)/%client.o $(OBJ)/%server.o $(OBJ)/elgamal%, $(OBJS))
 CLSR_OBJS=$(filter $(OBJ)/%client.o $(OBJ)/%server.o, $(OBJS))
 
-all: EG
+all: EG ECEG
 #	debugging commands
 	$(info SRCS: $(SRCS))
 	$(info HDRS: $(HDRS))
-	$(info UTIL_OBJS: $(UTIL_OBJS))
+	$(info EG_UTIL_OBJS: $(EG_UTIL_OBJS))
+	$(info ECEG_UTIL_OBJS: $(ECEG_UTIL_OBJS))
 	$(info CLSR_OBJS: $(CLSR_OBJS))
 	$(info OBJS: $(OBJS))
 
 EG: $(BIN)/elgamal-client $(BIN)/elgamal-server
-#ECEG: $(BIN)/ec-elgamal-client $(BIN)/ec-elgamal-server
+ECEG: $(BIN)/ec-elgamal-client $(BIN)/ec-elgamal-server
 
-$(BIN)/elgamal-%: $(OBJ)/elgamal-%.o $(UTIL_OBJS)
-	$(CC) $(FLAGS) $< $(UTIL_OBJS) -o $@ $(LINK)
-#$(BIN)/ec-elgamal-%: $(OBJ)/ec-elgamal-%.o $(UTIL_OBJS)
-#	$(CC) $(FLAGS) $< $(UTIL_OBJS) -o $@ $(LINK)
+$(BIN)/elgamal-%: $(OBJ)/elgamal-%.o $(EG_UTIL_OBJS)
+	$(CC) $(FLAGS) $< $(EG_UTIL_OBJS) -o $@ $(LINK)
+$(BIN)/ec-elgamal-%: $(OBJ)/ec-elgamal-%.o $(ECEG_UTIL_OBJS)
+	$(CC) $(FLAGS) $< $(ECEG_UTIL_OBJS) -o $@ $(LINK)
 
 $(BIN): $(OBJS)
 	$(CC) $(FLAGS) $(OBJS) -o $@
