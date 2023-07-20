@@ -5,8 +5,9 @@
 #include <openssl/rand.h>
 #include <string.h>     // memset()
 #include <sys/socket.h> // send() ,  recv()
+#include <sys/wait.h>   // wait()
 #include <time.h>       // clock_gettime()
-#include <unistd.h>     // close(), sleep()
+#include <unistd.h>     // close(), sleep(), fork()
 #include "../hdr/utils.h"
 #include "../hdr/elgamal-utils.h"
 #include "../hdr/elgamal-mh.h"

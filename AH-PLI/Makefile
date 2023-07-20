@@ -14,13 +14,13 @@ ECEG_UTIL_OBJS=$(filter-out $(OBJ)/%client.o $(OBJ)/%server.o $(OBJ)/elgamal%, $
 CLSR_OBJS=$(filter $(OBJ)/%client.o $(OBJ)/%server.o, $(OBJS))
 
 all: EG ECEG EG_BOTH
-#	debugging commands
-	$(info SRCS: $(SRCS))
-	$(info HDRS: $(HDRS))
-	$(info EG_UTIL_OBJS: $(EG_UTIL_OBJS))
-	$(info ECEG_UTIL_OBJS: $(ECEG_UTIL_OBJS))
-	$(info CLSR_OBJS: $(CLSR_OBJS))
-	$(info OBJS: $(OBJS))
+# debugging commands
+# $(info SRCS: $(SRCS))
+# $(info HDRS: $(HDRS))
+# $(info EG_UTIL_OBJS: $(EG_UTIL_OBJS))
+# $(info ECEG_UTIL_OBJS: $(ECEG_UTIL_OBJS))
+# $(info CLSR_OBJS: $(CLSR_OBJS))
+# $(info OBJS: $(OBJS))
 
 EG_BOTH: $(BIN)/elgamal-client-and-server
 EG: $(BIN)/elgamal-client $(BIN)/elgamal-server

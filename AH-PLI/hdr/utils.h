@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
+#include <openssl/err.h>
 #include <signal.h>     // sigemptyset()
 #include <stdarg.h>     // va_start(), va_arg(), va_end()
 #include <stdio.h>
@@ -24,7 +25,6 @@
 #define FIXED_LEN 10
 #define MAX_MSG_LEN 2048
 #define MAX_FILE_BYTES 256
-#define SEC_PAR 1024
 #define EC_SEC_PAR 32
 
 enum PartyType {
@@ -34,6 +34,16 @@ enum PartyType {
 enum MessageType {
     Bignum, Ecpoint, Integer
 };
+
+int
+general_error (char *error_msg);
+
+int
+openssl_error (char *error_msg);
+
+void
+set_security_param (int *dst,
+		    char *src);
 
 void *
 get_in_addr (struct sockaddr *sa);

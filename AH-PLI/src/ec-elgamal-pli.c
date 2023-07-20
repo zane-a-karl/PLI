@@ -32,7 +32,7 @@ server_run_ec_elgamal_pli (int                  new_fd,
     printf("Finished generating server keys\n\n"); TTICK;
 
     // Parse number of list entries from <filename>
-    r &= parse_file_for_num_entries(&num_entries, filename);
+    r = parse_file_for_num_entries(&num_entries, filename);
     if (!r) { perror("Failed to parse file for number of list entries"); return FAILURE; }
 
     // Parse server list entries from <filename>
@@ -42,7 +42,7 @@ server_run_ec_elgamal_pli (int                  new_fd,
 	bn_plain[i] = BN_new();
 	if (!bn_plain[i]) { r = 0; perror("Failed to alloc bn_plain"); }
     }
-    r &= parse_file_for_list_entries(bn_plain, num_entries, filename);
+    r = parse_file_for_list_entries(bn_plain, num_entries, filename);
     /* r = generate_list_entries(&plain, num_entries); */
     if (!r) { perror("Failed to parse file for list entries"); return FAILURE; }
     printf("parsed server list\n");
@@ -54,9 +54,9 @@ server_run_ec_elgamal_pli (int                  new_fd,
     /* bn_plain = calloc(num_entries, sizeof(*bn_plain));     */
     /* for (int i = 0; i < num_entries; i++) { */
     /* 	bn_plain[i] = BN_new(); */
-    /* 	r &= BN_set_word(bn_plain[i], plain[i]); */
+    /* 	r = BN_set_word(bn_plain[i], plain[i]); */
     /* 	if (!r) { perror("Failed to set ptxt2bn"); return FAILURE; }	 */
-    /* 	r &= EC_POINT_mul(server_keys.pk->group, p, bn_plain[i], NULL, NULL, ctx); */
+    /* 	r = EC_POINT_mul(server_keys.pk->group, p, bn_plain[i], NULL, NULL, ctx); */
     /* 	if (!r) { perror("Failed to calc G(rand)"); return FAILURE; } */
     /* 	r = EC_POINT_get_affine_coordinates(server_keys.pk->group, p, */
     /* 					    x, y, ctx); */
@@ -75,17 +75,17 @@ server_run_ec_elgamal_pli (int                  new_fd,
     printf("Started sending server pk\n"); TTICK;
     // 1st: the NID of group
     nid = EC_GROUP_get_curve_name(server_keys.pk->group);
-    r &= send_msg(new_fd, &nid, "server: sent server NID group =", Integer);
+    r = send_msg(new_fd, &nid, "server: sent server NID group =", Integer);
     if (!r) { perror("Failed to send \"NID group\""); return FAILURE; }
     // 2nd: the order
-    r &= send_msg(new_fd, server_keys.pk->order, "server: sent server order =", Bignum);
+    r = send_msg(new_fd, server_keys.pk->order, "server: sent server order =", Bignum);
     if (!r) { perror("Failed to send \"order\""); return FAILURE; }
     // 3rd: the generator
-    r &= send_msg(new_fd, server_keys.pk->generator, "server: sent server generator =",
+    r = send_msg(new_fd, server_keys.pk->generator, "server: sent server generator =",
 		  Ecpoint, server_keys.pk->group);
     if (!r) { perror("Failed to send \"generator\""); return FAILURE; }
     // 4th: the point
-    r &= send_msg(new_fd, server_keys.pk->point, "server: sent server point  =",
+    r = send_msg(new_fd, server_keys.pk->point, "server: sent server point  =",
 		  Ecpoint, server_keys.pk->group);
     if (!r) { perror("Failed to send \"point\""); return FAILURE; }
     printf("Finished sending server pk\n\n"); TTICK;
@@ -97,25 +97,25 @@ server_run_ec_elgamal_pli (int                  new_fd,
     server_cipher = calloc(num_entries, sizeof(*server_cipher));
     for (int i=0; i < num_entries; i++) {
 	/* bn_plain[i] = BN_new(); */
-	/* r &= BN_set_word(bn_plain[i], plain[i]); */
+	/* r = BN_set_word(bn_plain[i], plain[i]); */
 	/* if (!r) { perror("Failed to set ptxt2bn"); return FAILURE; } */
 	if (htype == AH) {
-	    r &= ah_ec_elgamal_encrypt(&server_cipher[i],
+	    r = ah_ec_elgamal_encrypt(&server_cipher[i],
 				       server_keys.pk,
 				       bn_plain[i]);
 	} else {
-	    r &= mh_ec_elgamal_encrypt(&server_cipher[i],
+	    r = mh_ec_elgamal_encrypt(&server_cipher[i],
 				       server_keys.pk,
 				       bn_plain[i]);
 	}
 	if (!r) { perror("Failed to encrypt server plaintext"); return FAILURE; }
 	// Send C1
-	r &= send_msg(new_fd, server_cipher[i].c1,
+	r = send_msg(new_fd, server_cipher[i].c1,
 		      "server: sent server_cipher.c1",
 		      Ecpoint, server_keys.pk->group);
 	if (!r) { perror("Failed to send server_cipher.c1"); return FAILURE; }
 	// Send C2
-	r &= send_msg(new_fd, server_cipher[i].c2,
+	r = send_msg(new_fd, server_cipher[i].c2,
 		      "server: sent server_cipher.c2",
 		      Ecpoint, server_keys.pk->group);
 	if (!r) { perror("Failed to send server_cipher.c2"); return FAILURE; }
@@ -128,13 +128,13 @@ server_run_ec_elgamal_pli (int                  new_fd,
     for (int i=0; i<num_entries; i++) {
 	// Recv C1
 	client_cipher[i].c1 = EC_POINT_new(server_keys.pk->group);
-	r &= recv_msg(new_fd, &client_cipher[i].c1,
+	r = recv_msg(new_fd, &client_cipher[i].c1,
 		      "server: recv client_cipher.c1",
 		      Ecpoint, server_keys.pk->group);
 	if (!r) { perror("Failed to recv client_cipher.c1"); return FAILURE; }
 	// Recv C2
 	client_cipher[i].c2 = EC_POINT_new(server_keys.pk->group);
-	r &= recv_msg(new_fd, &client_cipher[i].c2,
+	r = recv_msg(new_fd, &client_cipher[i].c2,
 		      "server: recv client_cipher.c2",
 		      Ecpoint, server_keys.pk->group);
 	if (!r) { perror("Failed to recv client_cipher.c2"); return FAILURE; }
@@ -146,9 +146,9 @@ server_run_ec_elgamal_pli (int                  new_fd,
     for (int i=0; i<num_entries; i++) {
 	printf("Check#%i -> ", i);
 	if (htype == AH) {
-	    r &= ec_elgamal_skip_dlog_check_is_at_infinity(server_keys, client_cipher[i]);
+	    r = ec_elgamal_skip_dlog_check_is_at_infinity(server_keys, client_cipher[i]);
 	} else {
-	    r &= ec_elgamal_skip_decrypt_check_equality(server_keys, client_cipher[i]);
+	    r = ec_elgamal_skip_decrypt_check_equality(server_keys, client_cipher[i]);
 	}
 	if(!r) { perror("Failed skip decrypt/dlog check"); return FAILURE; }
     }
@@ -206,26 +206,26 @@ client_run_ec_elgamal_pli (int                  sockfd,
     // Receive server pk via socket
     printf("Started receiving server pk\n"); TTICK;
     // 1st: the NID of group
-	r &= recv_msg(sockfd, (void *)&nid,
+	r = recv_msg(sockfd, (void *)&nid,
 		  "client: received server group nid   = ",
 		      Integer);
     if (!r) { perror("Failed to recv server pk group"); return FAILURE; }
     server_pk.group = EC_GROUP_new_by_curve_name(nid);
     // 2nd: the order
     server_pk.order = BN_new();
-    r &= recv_msg(sockfd, (void *)&server_pk.order,
+    r = recv_msg(sockfd, (void *)&server_pk.order,
 		  "client: received server order   = ",
 		  Bignum);
     if (!r) { perror("Failed to recv server pk order"); return FAILURE; }
     // 3rd: the generator
     server_pk.generator = EC_POINT_new(server_pk.group);
-    r &= recv_msg(sockfd, (void *)&server_pk.generator,
+    r = recv_msg(sockfd, (void *)&server_pk.generator,
 		  "client: received server generator   = ",
 		  Ecpoint, server_pk.group);
     if (!r) { perror("Failed to recv server pk generator"); return FAILURE; }
     // 4th: the point
     server_pk.point = EC_POINT_new(server_pk.group);
-    r &= recv_msg(sockfd, (void *)&server_pk.point,
+    r = recv_msg(sockfd, (void *)&server_pk.point,
 		  "client: received server point   = ",
 		  Ecpoint, server_pk.group);
     if (!r) { perror("Failed to recv server pk point"); return FAILURE; }
@@ -233,7 +233,7 @@ client_run_ec_elgamal_pli (int                  sockfd,
     server_pk.p = BN_new();
     server_pk.a = BN_new();
     server_pk.b = BN_new();
-    r &= EC_GROUP_get_curve(server_pk.group, server_pk.p, server_pk.a, server_pk.b, ctx);
+    r = EC_GROUP_get_curve(server_pk.group, server_pk.p, server_pk.a, server_pk.b, ctx);
     if (!r) { perror("Failed to get curve params"); return FAILURE; }
     printf("pk.p = "); BN_print_fp(stdout, server_pk.p); printf("\n");
     printf("pk.a = "); BN_print_fp(stdout, server_pk.a); printf("\n");
@@ -246,13 +246,13 @@ client_run_ec_elgamal_pli (int                  sockfd,
     for (int i = 0; i < num_entries; i++) {
 	// Recv c1
 	server_cipher[i].c1 = EC_POINT_new(server_pk.group);
-	r &= recv_msg(sockfd, &server_cipher[i].c1,
+	r = recv_msg(sockfd, &server_cipher[i].c1,
 		      "client: received server_cipher.c1   = ",
 		      Ecpoint, server_pk.group);
 	if (!r) { perror("Failed to recv server_cipher.c1"); return FAILURE; }
 	// Recv c2
 	server_cipher[i].c2 = EC_POINT_new(server_pk.group);
-	r &= recv_msg(sockfd, &server_cipher[i].c2,
+	r = recv_msg(sockfd, &server_cipher[i].c2,
 		      "client: received server_cipher.c2   = ",
 		      Ecpoint, server_pk.group);
 	if (!r) { perror("Failed to recv server_cipher.c2"); return FAILURE; }
@@ -266,8 +266,8 @@ client_run_ec_elgamal_pli (int                  sockfd,
 	bn_plain[i] = BN_new();
 	if (!r) { perror("Failed to alloc bn_plain"); return FAILURE; }
     }
-    r &= parse_file_for_list_entries(bn_plain, num_entries, filename);
-    /* r &= generate_list_entries(&plain, num_entries); */
+    r = parse_file_for_list_entries(bn_plain, num_entries, filename);
+    /* r = generate_list_entries(&plain, num_entries); */
     if (!r) { perror("Failed to parse file for list entries"); return FAILURE; }
     printf("parsed client list\n");
 
@@ -277,7 +277,7 @@ client_run_ec_elgamal_pli (int                  sockfd,
     BIGNUM *bn_inv_plain[num_entries];
     for (int i = 0; i < num_entries; i++) {
 	/* bn_plain[i] = BN_new(); */
-	/* r &= BN_set_word(bn_plain[i], plain[i]); */
+	/* r = BN_set_word(bn_plain[i], plain[i]); */
 	/* if (!r) { perror("Failed to set bn_plain"); return FAILURE; } */
 	bn_inv_plain[i] = BN_mod_inverse(NULL, bn_plain[i], server_pk.p, ctx);
 	if (!bn_inv_plain[i]) { perror("Failed to invert bn_plain"); return FAILURE; }
@@ -287,11 +287,11 @@ client_run_ec_elgamal_pli (int                  sockfd,
     client_cipher = calloc(num_entries, sizeof(*client_cipher));
     for (int i = 0; i < num_entries; i++) {
 	if (htype == AH) {
-	    r &= ah_ec_elgamal_encrypt(&client_cipher[i],
+	    r = ah_ec_elgamal_encrypt(&client_cipher[i],
 				       &server_pk,
 				       bn_inv_plain[i]);
 	} else {
-	    r &= mh_ec_elgamal_encrypt(&client_cipher[i],
+	    r = mh_ec_elgamal_encrypt(&client_cipher[i],
 				       &server_pk,
 				       bn_inv_plain[i]);
 	}
@@ -311,10 +311,10 @@ client_run_ec_elgamal_pli (int                  sockfd,
     BIGNUM *bn_rand_mask[num_entries];
     for (int i = 0; i < num_entries; i++) {
 	bn_rand_mask[i] = BN_new();
-	r &= BN_rand_range_ex(bn_rand_mask[i], server_pk.p, EC_SEC_PAR, ctx);
+	r = BN_rand_range_ex(bn_rand_mask[i], server_pk.p, EC_SEC_PAR, ctx);
 	if (!r) { perror("Failed to gen bn_rand_mask"); return FAILURE; }
 	printf("r[%i] = ", i);
-	r &= BN_print_fp(stdout, bn_rand_mask[i]);
+	r = BN_print_fp(stdout, bn_rand_mask[i]);
 	printf("\n");
 	if (!r) { perror("Failed to print bn_rand_mask"); return FAILURE; }
     }
@@ -324,7 +324,7 @@ client_run_ec_elgamal_pli (int                  sockfd,
     // by the random value 'bn_rand_mask'
     EcGamalCiphertext ptmul_res[num_entries];
     for (int i = 0; i < num_entries; i++) {
-	r &= ec_elgamal_ptmul(&ptmul_res[i], add_res[i],
+	r = ec_elgamal_ptmul(&ptmul_res[i], add_res[i],
 			      bn_rand_mask[i], server_pk);
 	if (!r) { perror("Failed to point mul the ciphertexts"); return FAILURE; }
     }
@@ -334,12 +334,12 @@ client_run_ec_elgamal_pli (int                  sockfd,
     printf("Started sending mask(Enc_pkS(server list) + Enc_pkS(inv client list))\n"); TTICK;
     for (int i = 0; i < num_entries; i++) {
 	// Send c1
-	r &= send_msg(sockfd, ptmul_res[i].c1,
+	r = send_msg(sockfd, ptmul_res[i].c1,
 		      "client: sent ptmul_res.c1",
 		      Ecpoint, server_pk.group);
 	if (!r) { perror("Failed to send ptmul_res.c1"); return FAILURE; }
 	// Send C2
-	r &= send_msg(sockfd, ptmul_res[i].c2,
+	r = send_msg(sockfd, ptmul_res[i].c2,
 		      "client: sent ptmul_res.c2",
 		      Ecpoint, server_pk.group);
 	if (!r) { perror("Failed to send ptmul_res.c2"); return FAILURE; }

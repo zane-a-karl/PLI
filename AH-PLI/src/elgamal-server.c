@@ -3,6 +3,7 @@
 
 #define PORT "3490"      // The port users will be connecting to.
 #define LISTENER_QUEUE_LEN 10
+extern int SEC_PAR;
 
 int
 main (int argc,
@@ -15,14 +16,15 @@ main (int argc,
     char *homomorphism_type;
     char *filename;
 
-    if (argc != 3) {
+    if (argc != 4) {
 	// MH = multiplicatively homomorphic
 	// AH = additively homomorphic
-	fprintf(stderr, "usage: ./<executable> <MH or AH> <filename>\n");
+	printf("usage: ./<executable> <MH or AH> <security parameter> <filename>\n");
 	exit(1);
     }
     homomorphism_type = argv[1];
-    filename = argv[2];
+    set_security_param(&SEC_PAR, argv[2]);
+    filename          = argv[3];
     hardcode_socket_parameters(&service_info, PORT, SERVER, NULL);
     set_socket_and_bind(&sockfd, &service_info);
     freeaddrinfo(service_info);

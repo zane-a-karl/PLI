@@ -2,6 +2,32 @@
 
 
 uint64_t total_bytes = 0;
+int SEC_PAR;
+
+/**
+ * Always returns FAILURE
+ * prints a message corresponding to the error
+ */
+int
+general_error (char *error_msg)
+{
+    perror(error_msg);
+    return FAILURE;
+}
+
+/**
+ * Always returns FAILURE
+ * prints a message corresponding to the
+ * openssl error
+ */
+int
+openssl_error (char *error_msg)
+{
+    unsigned long error_code = ERR_get_error();
+    perror(error_msg);
+    perror(ERR_error_string(error_code, NULL));
+    return FAILURE;
+}
 
 // get sockaddr, IPv4 or IPv6:
 void *
@@ -11,6 +37,13 @@ get_in_addr (struct sockaddr *sa)
 	return &( ((struct sockaddr_in*)sa)->sin_addr );
     }
     return &( ((struct sockaddr_in6*)sa)->sin6_addr );
+}
+
+void
+set_security_param (int *dst,
+		    char *src)
+{
+    sscanf(src, "%d", dst);
 }
 
 void
@@ -203,8 +236,7 @@ parse_file_for_num_entries (int       *num_entries,
 
     fin = fopen(filename, "r");
     if (!fin) {
-	perror("Failed to open input file");
-	return FAILURE;
+	return general_error("Failed to open input file");
     }
 
     do {
@@ -220,8 +252,7 @@ parse_file_for_num_entries (int       *num_entries,
 
     r = fclose(fin);
     if (r == EOF) {
-	perror("Failed to close input file");
-	return FAILURE;
+	return general_error("Failed to close input file");
     }
     return SUCCESS;
 }
@@ -238,8 +269,7 @@ parse_file_for_list_entries (BIGNUM      **entries,
 
     fin = fopen(filename, "r");
     if (!fin) {
-	perror("Failed to open input file");
-	return FAILURE;
+	return general_error("Failed to open input file");
     }
 
     memset(buf, 0, MAX_FILE_BYTES);
@@ -251,26 +281,20 @@ parse_file_for_list_entries (BIGNUM      **entries,
 		c = fgetc(fin);
 	    } while(isdigit(c));
 	    r = BN_dec2bn(&entries[entries_i], buf);
-	    /* r = sscanf(buf, "%llu", &(*entries)[entries_i]); */
+	    if (!r) { return openssl_error("Failed to dec2bn entries"); }
 	    entries_i++;
-	    if (r == EOF) {
-		perror("Failed to sscanf buf into entries");
-		return FAILURE;
-	    }
 	    memset(buf, 0, MAX_FILE_BYTES);
 	    buf_i = 0;
 	}
     } while (!feof(fin) && !ferror(fin));
 
-    for (int i = 0; i < num_entries; i++) {
-	/* printf("entries[%i] = %" PRIu64 "\n", i, (*entries)[i]); */
-	printf("entries[%i] = ", i); BN_print_fp(stdout, entries[i]); printf("\n");
-    }
+    /* for (int i = 0; i < num_entries; i++) { */
+    /* 	printf("entries[%i] = ", i); BN_print_fp(stdout, entries[i]); printf("\n"); */
+    /* } */
     free(buf);
     r = fclose(fin);
     if (r == EOF) {
-	perror("Failed to close input file");
-	return FAILURE;
+	return general_error("Failed to close input file");
     }
     return SUCCESS;
 }
@@ -306,9 +330,8 @@ serialize_int (char **serialized,
     *serialized = calloc(FIXED_LEN, sizeof(char));
     /* *serialized is null-terminated by this fn */
     r = snprintf(*serialized, FIXED_LEN, "%d", *msg);
-    if (r == 0) {
-	perror("Failed to snprintf msg");
-	return FAILURE;
+    if (!r) {
+	return general_error("Failed to snprintf msg");
     }
     return SUCCESS;
 }
@@ -324,8 +347,7 @@ serialize_ecpoint (char   **serialized,
     *serialized = EC_POINT_point2hex(group, msg, POINT_CONVERSION_UNCOMPRESSED, ctx);
     BN_CTX_free(ctx);
     if (!*serialized) {
-	perror("Failed to point2hex msg");
-	return FAILURE;
+	return openssl_error("Failed to point2hex msg");
     }
     return SUCCESS;
 }
@@ -338,9 +360,8 @@ serialize_bignum (char   **serialized,
     // malloc'd by this fn
     *serialized = BN_bn2hex(msg);
     if (!*serialized) {
-	perror("Error bn2hex msg");
 	free(*serialized);
-	return FAILURE;
+	return openssl_error("Error bn2hex msg");
     }
     return SUCCESS;
 }
@@ -357,17 +378,17 @@ send_msg_length (int file_descriptor,
     fixed_buf = calloc(FIXED_LEN, sizeof(char));
     /* fixed_buf is null-terminated by this fn */
     r = snprintf(fixed_buf, FIXED_LEN, "%lu", length);
-    if (r == 0) { r = 0; perror("Failed to snprintf fixed_buf"); }
+    if (r == 0) { r = 0; return general_error("Failed to snprintf fixed_buf"); }
     fixed_buf_num_bytes = strnlen(fixed_buf, FIXED_LEN);
     if (fixed_buf_num_bytes < FIXED_LEN) {
 	fixed_buf = pad_leading_zeros(fixed_buf);
     } else {
 	r = 0;
-	perror("Increase fixed length");
+	return general_error("Increase fixed length");
     }
     /* Send UL length */
     r = send(file_descriptor, fixed_buf, FIXED_LEN, 0);
-    if (r == -1) { r = 0; perror("Failed to send bn message len"); }
+    if (r == -1) { r = 0; return general_error("Failed to send message len"); }
     free(fixed_buf);
     if (!r) {
 	return FAILURE;
@@ -405,17 +426,17 @@ send_msg (int    file_descriptor,
 	r = 0;
 	break;
     }
-    if (!r) { perror("Failed to serialize msg"); }
+    if (!r) { return general_error("Failed to serialize msg"); }
 
     // Pre-send the real msg's length first
     buf_num_bytes = strnlen(buf, MAX_MSG_LEN);
     r = send_msg_length(file_descriptor, buf_num_bytes);
-    if (r == -1) { r = 0; perror("Failed to send msg length"); }
+    if (r == -1) { r = 0; return general_error("Failed to send msg length"); }
     // Now send the real msg
     r = send(file_descriptor, buf, buf_num_bytes, 0);
-    if (r == -1) { r = 0; perror("Failed to send msg"); }
+    if (r == -1) { r = 0; return general_error("Failed to send msg"); }
     total_bytes += r;
-    printf("%s %s\n", conf_str, buf);
+    /* printf("%s %s\n", conf_str, buf); */
     free(buf);
     if (!r) {
 	return FAILURE;
@@ -432,9 +453,9 @@ recv_msg_length (int   file_descriptor,
 
     fixed_buf = calloc(FIXED_LEN+1, sizeof(char));
     r = recv(file_descriptor, fixed_buf, FIXED_LEN, 0);
-    if (r == -1) { perror("Failed to recv message len"); return FAILURE; }
+    if (r == -1) { return general_error("Failed to recv message len"); }
     r = sscanf(fixed_buf, "%lu", length);
-    if (r == EOF) { perror("Failed to sscanf msg_buffer_len"); return FAILURE; }
+    if (r == EOF) { return general_error("Failed to sscanf msg_buffer_len"); }
     free(fixed_buf);
     return SUCCESS;
 }
@@ -444,9 +465,10 @@ deserialize_bignum (BIGNUM **msg,
 		    char    *buf)
 {
     int r;
-
     r = BN_hex2bn(msg, buf);
-    if (!r) { perror("Failed hex2bn hex buf"); return FAILURE; }
+    if (!r) {
+	return openssl_error("Failed hex2bn hex buf");
+    }
     return SUCCESS;
 }
 
@@ -457,8 +479,7 @@ deserialize_int (int  *msg,
     int r;
     r = sscanf(buf, "%d", msg);
     if (r == EOF) {
-	perror("Failed to sscanf msg_buffer_len");
-	return FAILURE;
+	return general_error("Failed to sscanf msg_buffer_len");
     }
     return SUCCESS;
 }
@@ -473,8 +494,7 @@ deserialize_ecpoint (EC_POINT  **msg,
 
     r = EC_POINT_hex2point(group, buf, *msg, ctx);
     if (!r) {
-	perror("Failed hex2ecpoint buf");
-	return FAILURE;
+	return openssl_error("Failed hex2ecpoint buf");
     }
     return SUCCESS;
 }
@@ -493,32 +513,31 @@ recv_msg (int       file_descriptor,
 
     buf = calloc(MAX_MSG_LEN, sizeof(char));
     r = recv_msg_length(file_descriptor, &buf_num_bytes);
-    if (r == -1) { r = 0; perror("Failed to recv msg length"); }
+    if (r == -1) { r = 0; return general_error("Failed to recv msg length"); }
     r = recv(file_descriptor, buf, buf_num_bytes, 0);
-    if ( r  == -1 ) { r = 0; perror("Failed to recv msg"); }
+    if ( r  == -1 ) { r = 0; return general_error("Failed to recv msg"); }
     buf[r] = '\0';
-    printf("%s %s\n", conf_str, buf);
-    r = SUCCESS;
+    /* printf("%s %s\n", conf_str, buf); */
 
     /* Deserialize buf into msg */
     switch (mtype) {
     case Bignum:
-	r &= deserialize_bignum((BIGNUM **)msg, buf);
+	r = deserialize_bignum((BIGNUM **)msg, buf);
 	break;
     case Ecpoint:
 	va_start(args_ptr, mtype);
 	EC_GROUP *g = va_arg(args_ptr, EC_GROUP *);
-	r &= deserialize_ecpoint((EC_POINT **)msg, buf, g);
+	r = deserialize_ecpoint((EC_POINT **)msg, buf, g);
 	va_end(args_ptr);
 	break;
     case Integer:
-	r &= deserialize_int((int *)msg, buf);
+	r = deserialize_int((int *)msg, buf);
 	break;
     default:
 	r = 0;
 	break;
     }
-    if (!r) { perror("Failed to deserialize buf"); return FAILURE; }
+    if (!r) { return general_error("Failed to deserialize buf"); }
 
     free(buf);
     if (!r) {
