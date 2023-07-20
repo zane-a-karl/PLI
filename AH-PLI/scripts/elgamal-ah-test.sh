@@ -17,7 +17,7 @@ start_size=10
 end_size=100
 sample_size=5
 sec_par=2048
-logfile="logs/elgamal-$sec_par.txt"
+logfile="logs/elgamal-ah-$sec_par.csv"
 
 # Usage `setup_input_files $i`,
 # where `i` is the current entry list size

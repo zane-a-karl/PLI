@@ -8,8 +8,11 @@ static double sec;
 static FILE *logfs;
 static char *logfile;
 
-#define TSTART snprintf(logfile, 32, "%s%d%s", "logs/elgamal-", SEC_PAR, ".txt"); \
-    logfs = fopen(logfile, "a"); \
+/* #define TSTART snprintf(logfile, 32, "%s%d%s", "logs/elgamal-", SEC_PAR, ".txt"); \ */
+/*     logfs = fopen(logfile, "a"); \ */
+/*     printf("Starting the clock: \n"); \ */
+/*     clock_gettime(CLOCK_MONOTONIC, &t1); */
+#define TSTART logfs = stdout; \
     printf("Starting the clock: \n"); \
     clock_gettime(CLOCK_MONOTONIC, &t1);
 
@@ -17,16 +20,15 @@ static char *logfile;
     sec = (t2.tv_sec - t1.tv_sec) + (t2.tv_nsec - t1.tv_nsec) / 1000000000.0; \
     fprintf(logfs,"Line:%5d, Time = %f\n",__LINE__,sec);
 
-#define TTOCK printf("Ending the clock: \n"); \
+#define COLLECT_LOG_ENTRY(secpar, n_entries, bytes) \
+    printf("Ending the clock: \n"); \
     clock_gettime(CLOCK_MONOTONIC, &t2); \
     sec = (t2.tv_sec - t1.tv_sec) + (t2.tv_nsec - t1.tv_nsec) / 1000000000.0; \
-    fprintf(logfs,"%f\n", sec); \
-    fclose(logfs);
-
-#define FPRINT_LOG_ENTRY(secpar, n_entries, bytes) \
     fprintf(logfs, "%d, ", SEC_PAR); \
     fprintf(logfs, "%d, ", n_entries); \
-    fprintf(logfs, "%" PRIu64 ", ", bytes);
+    fprintf(logfs, "%" PRIu64 ", ", bytes); \
+    fprintf(logfs,"%f\n", sec); \
+    fclose(logfs);
 
 int
 server_run_elgamal_pli (int                  new_fd,
@@ -126,8 +128,7 @@ server_run_elgamal_pli (int                  new_fd,
     }
     /* printf("Finished pli ciphertext comparison\n\n"); TTICK; */
     /* printf("Total bytes sent during protocol = %" PRIu64 "\n", total_bytes); */
-    FPRINT_LOG_ENTRY(SEC_PAR, num_entries, total_bytes);
-    TTOCK;
+    COLLECT_LOG_ENTRY(SEC_PAR, num_entries, total_bytes);
 
     free(logfile);
     BN_free(server_keys.pk->modulus);
