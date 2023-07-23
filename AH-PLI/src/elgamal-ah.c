@@ -126,3 +126,42 @@ baby_step_giant_step (BIGNUM *bn_plaintext)
     //TODO
     return FAILURE;
 }
+
+int
+elgamal_skip_dlog_check_is_one (GamalKeys         keys,
+				GamalCiphertext cipher)
+{
+    int r = 1;
+    BIGNUM *denominator;
+    BIGNUM *decrypt_res;
+    BIGNUM *tmp;
+    BN_CTX *ctx = BN_CTX_new();
+    if (!ctx) { r = 0; return openssl_error("Failed to create new ctx"); }
+    denominator = BN_new();
+    if (!denominator) { r = 0; return openssl_error("Failed to make new bn"); }
+    decrypt_res = BN_new();
+    if (!decrypt_res) { r = 0; return openssl_error("Failed to make new bn"); }
+
+    // Calculate 1/c1 then 1/c1^sk
+    tmp = BN_mod_inverse(denominator, cipher.c1, keys.pk->modulus, ctx);
+    if (!tmp) { r = 0; return openssl_error("Failed to calc 1/c1"); }
+    r = BN_mod_exp(denominator, denominator, keys.sk->secret, keys.pk->modulus, ctx);
+    if (!r) { return openssl_error("Failed to calc (1/c1)^sk"); }
+    // Evaluate c2/c1^sk
+    r = BN_mod_mul(decrypt_res, cipher.c2, denominator, keys.pk->modulus, ctx);
+    if (!r) { return openssl_error("Failed to calc c2/c1^sk"); }
+    r = BN_print_fp(stdout, decrypt_res);
+    if (BN_is_one(decrypt_res)) {
+	printf(" -> Found a match!\n");
+    } else {
+	printf(" -> Not a match.\n");
+    }
+
+    BN_free(denominator);
+    BN_free(decrypt_res);
+    BN_CTX_free(ctx);
+    if (!r) {
+	return FAILURE;
+    }
+    return SUCCESS;
+}

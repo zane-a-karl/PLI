@@ -25,7 +25,6 @@
 #define FIXED_LEN 10
 #define MAX_MSG_LEN 2048
 #define MAX_FILE_BYTES 256
-#define EC_SEC_PAR 32
 
 enum PartyType {
     CLIENT, SERVER
@@ -41,8 +40,11 @@ general_error (char *error_msg);
 int
 openssl_error (char *error_msg);
 
+int
+log_base2 (int sec_par);
+
 void
-set_security_param (int *dst,
+set_security_param (int  *dst,
 		    char *src);
 
 void *

@@ -29,6 +29,24 @@ openssl_error (char *error_msg)
     return FAILURE;
 }
 
+int
+log_base2 (int sec_par)
+{
+    int result = -1;
+    while (sec_par > 0) {
+	sec_par >>= 1;
+	result++;
+    }
+    return result;
+}
+
+void
+set_security_param (int  *dst,
+		    char *src)
+{
+    sscanf(src, "%d", dst);
+}
+
 // get sockaddr, IPv4 or IPv6:
 void *
 get_in_addr (struct sockaddr *sa)
@@ -37,13 +55,6 @@ get_in_addr (struct sockaddr *sa)
 	return &( ((struct sockaddr_in*)sa)->sin_addr );
     }
     return &( ((struct sockaddr_in6*)sa)->sin6_addr );
-}
-
-void
-set_security_param (int *dst,
-		    char *src)
-{
-    sscanf(src, "%d", dst);
 }
 
 void

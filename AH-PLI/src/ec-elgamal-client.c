@@ -2,6 +2,7 @@
 
 
 #define PORT "3490" // the port client will be connecting to
+extern int SEC_PAR;
 
 int
 main (int   argc,
@@ -39,6 +40,6 @@ main (int   argc,
 	perror("client: Failed during pli execution");
 	exit(1);
     }
-
+    close(sockfd);
     return 0;
 }

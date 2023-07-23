@@ -55,10 +55,9 @@ main (int argc,
 		perror("server: Failed during pli execution");
 		exit(1);
 	    }
-	}
-	// Parent process doesn't need client fd
+	} // fork
 	close(new_fd);
-    }
-
+    } //while loop
+    close(sockfd);
     return 0;
 }

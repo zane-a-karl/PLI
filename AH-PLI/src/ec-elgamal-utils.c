@@ -1,5 +1,8 @@
 #include "../hdr/ec-elgamal-utils.h"
 
+
+extern int SEC_PAR;
+
 /**
  * @param pk is the public key
  * @param NID is the numerical identifier of the
@@ -38,7 +41,7 @@ generate_ec_elgamal_keys (EcGamalKeys *keys)
     // Initialize sk
     keys->sk = BN_new();
     if (!keys->sk) { r = 0; perror("Failed to alloc keys->sk"); return FAILURE; }
-    r = BN_rand_range_ex(keys->sk, keys->pk->order, EC_SEC_PAR, ctx);
+    r = BN_rand_range_ex(keys->sk, keys->pk->order, SEC_PAR, ctx);
     if (!r) { perror("Failed to generate random sk"); return FAILURE; }
     g = EC_GROUP_get0_generator(keys->pk->group);
     keys->pk->generator = EC_POINT_dup(g, keys->pk->group);
@@ -78,8 +81,14 @@ ec_elgamal_add (EcGamalCiphertext *res,
     int r;
     BN_CTX *ctx = BN_CTX_new();
 
+    res->c1 = EC_POINT_new(pk.group);
+    if (!res->c1) { r = 0; return openssl_error("Error allocating res->c1"); }
+    res->c2 = EC_POINT_new(pk.group);
+    if (!res->c2) { r = 0; return openssl_error("Error allocating res->c2"); }
+    // Calc a.c1 + b.c1
     r = EC_POINT_add(pk.group, res->c1, a.c1, b.c1, ctx);
     if (!r) { perror("Failed to add c1 terms"); return FAILURE; }
+    // Calc a.c2 + b.c2
     r = EC_POINT_add(pk.group, res->c2, a.c2, b.c2, ctx);
     if (!r) { perror("Failed to add c2 terms"); return FAILURE; }
 
@@ -99,8 +108,14 @@ ec_elgamal_ptmul (EcGamalCiphertext *res,
     int r;
     BN_CTX *ctx = BN_CTX_new();
 
+    res->c1 = EC_POINT_new(pk.group);
+    if (!res->c1) { r = 0; return openssl_error("Error allocating res->c1"); }
+    res->c2 = EC_POINT_new(pk.group);
+    if (!res->c2) { r = 0; return openssl_error("Error allocating res->c2"); }
+    // Calc a.c1 * b
     r = EC_POINT_mul(pk.group, res->c1, NULL, a.c1, b, ctx);
     if (!r) { perror("Failed to ptmul c1 terms"); return FAILURE; }
+    // Calc a.c2 * b
     r = EC_POINT_mul(pk.group, res->c2, NULL, a.c2, b, ctx);
     if (!r) { perror("Failed to ptmul c2 terms"); return FAILURE; }
 
@@ -125,7 +140,7 @@ ec_elgamal_skip_decrypt_check_equality (EcGamalKeys       keys,
     ecpt_plain = EC_POINT_new(keys.pk->group);
     if (!ecpt_plain) { r = 0; perror("Failed to make new ecpt"); return FAILURE; }
 
-    // Calculate c1 * keys.sk
+    // Calculate c1 * sk
     r = EC_POINT_mul(keys.pk->group, c1_x_sk, NULL, cipher.c1, keys.sk, ctx);
     if (!r) { perror("Failed to calc c1*sk"); return FAILURE; }
     // Compare c2 and (c1*sk)

@@ -67,3 +67,31 @@ mh_elgamal_decrypt (BIGNUM    *bn_plaintext,
     }
     return SUCCESS;
 }
+
+int
+elgamal_skip_decrypt_check_equality (GamalKeys         keys,
+				     GamalCiphertext cipher)
+{
+    int r = 1;
+    BIGNUM *denominator;
+    BN_CTX *ctx = BN_CTX_new();
+    if (!ctx) { r= 0; return openssl_error("Failed to create new ctx"); }
+    denominator = BN_new();
+    if (!denominator) { r = 0; return openssl_error("Failed to make new bn"); }
+    // Calculate c1^sk
+    r = BN_mod_exp(denominator, cipher.c1, keys.sk->secret, keys.pk->modulus, ctx);
+    if (!r) { return openssl_error("Failed to calc c1^sk"); }
+
+    if (BN_cmp(denominator, cipher.c2) == 0) {
+	printf("Found a match!\n");
+    } else {
+	printf("Not a match.\n");
+    }
+
+    BN_free(denominator);
+    BN_CTX_free(ctx);
+    if (!r) {
+	return FAILURE;
+    }
+    return SUCCESS;
+}

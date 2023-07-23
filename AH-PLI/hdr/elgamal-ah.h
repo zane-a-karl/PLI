@@ -22,4 +22,8 @@ elgamal_brute_force_discrete_log (BIGNUM *exponent,
 int
 baby_step_giant_step(BIGNUM *bn_plaintext);
 
+int
+elgamal_skip_dlog_check_is_one (GamalKeys          keys,
+				GamalCiphertext  cipher);
+
 #endif//_ELGAMAL_AH_H_

@@ -26,6 +26,10 @@ typedef struct GamalCiphertext {
 } GamalCiphertext;
 
 int
+parse_hardcoded_bignum (BIGNUM      **output,
+			const char *filename);
+
+int
 generate_elgamal_keys (GamalKeys *keys);
 
 int
@@ -39,13 +43,5 @@ elgamal_exp (GamalCiphertext *res,
 	     GamalCiphertext    a,
 	     BIGNUM     *exponent,
 	     BIGNUM      *modulus);
-
-int
-elgamal_skip_decrypt_check_equality (GamalKeys              keys,
-				     GamalCiphertext ciphertext);
-
-int
-elgamal_skip_dlog_check_is_one (GamalKeys              keys,
-				GamalCiphertext  ciphertext);
 
 #endif//_ELGAMAL_UTILS_H_

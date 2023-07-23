@@ -1,6 +1,8 @@
 #include "../hdr/ec-elgamal-ah.h"
 
 
+extern int SEC_PAR;
+
 int
 ah_ec_elgamal_encrypt (EcGamalCiphertext *cipher,
 		       EcGamalPk             *pk,
@@ -17,7 +19,7 @@ ah_ec_elgamal_encrypt (EcGamalCiphertext *cipher,
     cipher->c2 = EC_POINT_new(pk->group);
     if (!cipher->c2) { r = 0; perror("Failed to make new ecpoint"); return FAILURE; }
 
-    r = BN_rand_range_ex(bn_rand_elem, pk->order, EC_SEC_PAR, ctx);
+    r = BN_rand_range_ex(bn_rand_elem, pk->order, SEC_PAR, ctx);
     if (!r) { perror("Failed to gen rand elem"); return FAILURE; }
 
     // Set c1 = G(bn_rand_elem)

@@ -16,7 +16,7 @@ server_file="input/server.txt"
 start_size=10
 end_size=100
 sample_size=5
-sec_par=2048
+sec_par=$1
 logfile="logs/elgamal-mh-$sec_par.csv"
 
 # Usage `setup_input_files $i`,
@@ -46,7 +46,7 @@ function setup_input_files {
 }
 
 echo "START AVERAGE RUNTIME/BANDWIDTH TEST";
-echo "sec par, \# entries, total bytes, total_time" > "$logfile";
+echo "sec par, # entries, total bytes, total_time" > "$logfile";
 for ((i=$start_size; i<=$end_size; i+=10))
 do
     setup_input_files $i

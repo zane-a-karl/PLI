@@ -40,6 +40,6 @@ main (int   argc,
 	perror("client: Failed during pli execution");
 	exit(1);
     }
-
+    close(sockfd);
     return 0;
 }

@@ -8,13 +8,14 @@ static double sec;
 static FILE *logfs;
 static char *logfile;
 
-/* #define TSTART snprintf(logfile, 32, "%s%d%s", "logs/elgamal-", SEC_PAR, ".txt"); \ */
-/*     logfs = fopen(logfile, "a"); \ */
-/*     printf("Starting the clock: \n"); \ */
-/*     clock_gettime(CLOCK_MONOTONIC, &t1); */
-#define TSTART logfs = stdout; \
+#define TSTART(htype) \
+    snprintf(logfile, 32, "%s-%s-%d.%s", "logs/elgamal", htype, SEC_PAR, "csv"); \
+    logfs = fopen(logfile, "a"); \
     printf("Starting the clock: \n"); \
     clock_gettime(CLOCK_MONOTONIC, &t1);
+/* #define TSTART logfs = stdout; \ */
+/*     printf("Starting the clock: \n"); \ */
+/*     clock_gettime(CLOCK_MONOTONIC, &t1); */
 
 #define TTICK clock_gettime(CLOCK_MONOTONIC, &t2); \
     sec = (t2.tv_sec - t1.tv_sec) + (t2.tv_nsec - t1.tv_nsec) / 1000000000.0; \
@@ -36,7 +37,7 @@ server_run_elgamal_pli (int                  new_fd,
 			char              *filename)
 {
     logfile = calloc(32, sizeof(char));
-    TSTART;
+    /* TSTART; */
     int r;
     int num_entries = 0;
     GamalKeys server_keys;
@@ -50,6 +51,13 @@ server_run_elgamal_pli (int                  new_fd,
     r = generate_elgamal_keys(&server_keys);
     if (!r) { return openssl_error("Failed to gen EG keys"); }
     /* printf("Finished generating server keys\n\n"); TTICK; */
+
+    // Start here to exclude key generation
+    if (htype == AH) {
+	TSTART("ah");
+    } else {
+	TSTART("mh");
+    }
 
     // Parse number of list entries from <filename>
     r = parse_file_for_num_entries(&num_entries, filename);
@@ -221,8 +229,14 @@ client_run_elgamal_pli (int                  sockfd,
     /* printf("Started computing (Enc_pkS(server list) * Enc_pkS(inv client list))^mask \n"); TTICK; */
     BIGNUM *bn_inv_plain[num_entries];
     for (int i = 0; i < num_entries; i++) {
-	bn_inv_plain[i] = BN_mod_inverse(NULL, bn_plain[i], server_pk.modulus, ctx);
-	if (!bn_inv_plain[i]) { r = 0; return openssl_error("Failed to invert bn_plain"); }
+	if (htype == AH) {
+	    bn_inv_plain[i] = BN_dup(bn_plain[i]);
+	    BN_set_negative(bn_inv_plain[i], 1);
+	    if (!bn_inv_plain[i]) { perror("Failed to negate bn_plain"); return FAILURE; }
+	} else {
+	    bn_inv_plain[i] = BN_mod_inverse(NULL, bn_plain[i], server_pk.modulus, ctx);
+	    if (!bn_inv_plain[i]) { r = 0; return openssl_error("Failed to invert bn_plain"); }
+	}
     }
     // Encrypt inverse of client list entries under the server public key
     client_cipher = calloc(num_entries, sizeof(*client_cipher));

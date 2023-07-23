@@ -4,6 +4,54 @@
 extern int SEC_PAR;
 
 /**
+ * Reads from the file 'filename' and
+ * takes the log_base2('SEC_PAR')-th bignum
+ * @param output bignum from ascii hex string
+ * @param filename of file to parse
+ * @return SUCCESS/FAILURE
+ */
+int
+parse_hardcoded_bignum (BIGNUM      **output,
+			const char *filename)
+{
+    const int len = 2048;
+    char *buf = calloc(len, sizeof(char));
+    int c = 0;
+    int r = 0;
+    int i = 0;
+    int sec_par_i = log_base2(SEC_PAR);
+    int buf_i = 0;
+    FILE *fin = fopen(filename, "r");
+    if (!fin) {	return general_error("Failed to open hardcoded input file"); }
+
+    memset(buf, 0, len);
+    do {
+	c = fgetc(fin);
+	if (isalnum(c)) {
+	    if (i == sec_par_i) {
+		do {
+		    buf[buf_i++] = c;
+		    c = fgetc(fin);
+		} while(isalnum(c));
+		r = BN_hex2bn(output, buf);
+		if (!r) { return openssl_error("Failed to hex2bn hardcoded bignum"); }
+		break;
+	    } else {
+		do {
+		    c = fgetc(fin);
+		} while(isalnum(c));
+		i++;
+	    }
+	}
+    } while (!feof(fin) && !ferror(fin));
+
+    free(buf);
+    r = fclose(fin);
+    if (r == EOF) { return general_error("Failed to close hardcoded input file"); }
+    return SUCCESS;
+}
+
+/**
  * allocs space for and initializes fields in
  * GamalKeys structure
  * @param structure to hold the keys
@@ -13,8 +61,8 @@ int
 generate_elgamal_keys (GamalKeys *keys)
 {
     int r;
-    int is_safe = 1;
-    BIGNUM *add;
+    /* int is_safe = 1; */
+    /* BIGNUM *add; */
     BN_CTX *ctx = BN_CTX_new();
     keys->pk = calloc(1, sizeof(struct GamalPk));
     keys->pk->generator = BN_new();
@@ -22,21 +70,24 @@ generate_elgamal_keys (GamalKeys *keys)
     keys->pk->mul_mask  = BN_new();
     keys->sk = calloc(1, sizeof(struct GamalSk));
     keys->sk->secret    = BN_new();
-    add = BN_new();
+    /* add = BN_new(); */
 
     // Assume generator = 3
     // Doing this randomly each time takes forever
     r = BN_set_word(keys->pk->generator, 3ULL);
     if (!r) { return openssl_error("Failed to set generator"); }
 
-    // Gen the field's prime modulus
-    // Run openssl dhparam -text -out dhparams.pem -2 2048
-    // -2 means it's a safe prime
+    /**************Gen the field's prime modulus**************/
+    /* Run openssl dhparam -text -out dhparams.pem -2 2048 */
+    /* -2 means it's a safe prime */
     /* r = parse_modulus_from_dhparams_file(); */
-    r = BN_set_word(add, 8ULL);
-    if (!r) { return openssl_error("Failed to set add"); }
-    r = BN_generate_prime_ex2(keys->pk->modulus, SEC_PAR, is_safe,
-			       add, keys->pk->generator, NULL, ctx);
+    r = parse_hardcoded_bignum(&keys->pk->modulus, "input/primes.txt");
+    /* Generates safe prime modulus on the fly */
+    /* Fails for large SEC_PAR value due to low internal entropy */
+    /* r = BN_set_word(add, 8ULL); */
+    /* if (!r) { return openssl_error("Failed to set add"); } */
+    /* r = BN_generate_prime_ex2(keys->pk->modulus, SEC_PAR, is_safe, */
+    /* 			       add, keys->pk->generator, NULL, ctx); */
     /* Get prime from https://bigprimes.org/ */
     /* r = BN_set_word(keys->pk->modulus, 172758658065239ULL); */
     if (!r) { return openssl_error("Failed to generate prime ex2"); }
@@ -45,15 +96,17 @@ generate_elgamal_keys (GamalKeys *keys)
     if (!r) { return openssl_error("Failed to generate true prime"); }
 
     // Gen the field element secret key
-    // This will fail for high values of SEC_PAR due to your computer having low entropy I guess
-    r = BN_rand_range_ex(keys->sk->secret, keys->pk->modulus, SEC_PAR, ctx);
+    /* This will fail for high values of SEC_PAR due to your computer having low entropy I guess */
+    /* r = BN_rand_range_ex(keys->sk->secret, keys->pk->modulus, SEC_PAR, ctx); */
+    /* If you need things to not fail just grab one of the hardcoded values */
+    r = parse_hardcoded_bignum(&keys->sk->secret, "input/secret-keys.txt");
     if (!r) { return openssl_error("Failed to gen secret key"); }
     // Gen the field element mul_mask
     r = BN_mod_exp(keys->pk->mul_mask, keys->pk->generator,
-		    keys->sk->secret, keys->pk->modulus, ctx);
+		   keys->sk->secret, keys->pk->modulus, ctx);
     if (!r) { return openssl_error("Failed to calculate h = g^sk"); }
 
-    BN_free(add);
+    /* BN_free(add); */
     BN_CTX_free(ctx);
     if (!r) {
 	return FAILURE;
@@ -120,73 +173,6 @@ elgamal_exp (GamalCiphertext *res,
     r = BN_mod_exp(res->c2, a.c2, exponent, modulus, ctx);
     if (!r) { return openssl_error("Error calculating a.c2^r"); }
 
-    BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
-    return SUCCESS;
-}
-
-int
-elgamal_skip_decrypt_check_equality (GamalKeys             keys,
-				     GamalCiphertext cipher)
-{
-    int r = 1;
-    BIGNUM *denominator;
-    BN_CTX *ctx = BN_CTX_new();
-    if (!ctx) { r= 0; return openssl_error("Failed to create new ctx"); }
-    denominator = BN_new();
-    if (!denominator) { r = 0; return openssl_error("Failed to make new bn"); }
-    // Calculate c1^sk
-    r = BN_mod_exp(denominator, cipher.c1, keys.sk->secret, keys.pk->modulus, ctx);
-    if (!r) { return openssl_error("Failed to calc c1^sk"); }
-
-    if (BN_cmp(denominator, cipher.c2) == 0) {
-	printf("Found a match!\n");
-    } else {
-	printf("Not a match.\n");
-    }
-
-    BN_free(denominator);
-    BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
-    return SUCCESS;
-}
-
-int
-elgamal_skip_dlog_check_is_one (GamalKeys             keys,
-				GamalCiphertext cipher)
-{
-    int r = 1;
-    BIGNUM *denominator;
-    BIGNUM *decrypt_res;
-    BIGNUM *tmp;
-    BN_CTX *ctx = BN_CTX_new();
-    if (!ctx) { r = 0; return openssl_error("Failed to create new ctx"); }
-    denominator = BN_new();
-    if (!denominator) { r = 0; return openssl_error("Failed to make new bn"); }
-    decrypt_res = BN_new();
-    if (!decrypt_res) { r = 0; return openssl_error("Failed to make new bn"); }
-
-    // Calculate 1/c1 then 1/c1^sk
-    tmp = BN_mod_inverse(denominator, cipher.c1, keys.pk->modulus, ctx);
-    if (!tmp) { r = 0; return openssl_error("Failed to calc 1/c1"); }
-    r = BN_mod_exp(denominator, denominator, keys.sk->secret, keys.pk->modulus, ctx);
-    if (!r) { return openssl_error("Failed to calc (1/c1)^sk"); }
-    // evaluate c2/c1^sk
-    r = BN_mod_mul(decrypt_res, cipher.c2, denominator, keys.pk->modulus, ctx);
-    if (!r) { return openssl_error("Failed to calc c2/c1^sk"); }
-    r = BN_print_fp(stdout, decrypt_res);
-    if (BN_is_one(decrypt_res)) {
-	printf(" -> Found a match!\n");
-    } else {
-	printf(" -> Not a match.\n");
-    }
-
-    BN_free(denominator);
-    BN_free(decrypt_res);
     BN_CTX_free(ctx);
     if (!r) {
 	return FAILURE;
