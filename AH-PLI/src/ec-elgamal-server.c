@@ -6,7 +6,7 @@
 extern int SEC_PAR;
 
 int
-main (int argc,
+main (int    argc,
       char **argv)
 {
     int r;

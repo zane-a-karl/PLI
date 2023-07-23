@@ -58,9 +58,6 @@ generate_ec_elgamal_keys (EcGamalKeys *keys)
     keys->pk->b = BN_new();
     r = EC_GROUP_get_curve(keys->pk->group, keys->pk->p, keys->pk->a, keys->pk->b, ctx);
     if (!r) { perror("Failed to get curve params"); return FAILURE; }
-    printf("pk.p = "); BN_print_fp(stdout, keys->pk->p); printf("\n");
-    printf("pk.a = "); BN_print_fp(stdout, keys->pk->a); printf("\n");
-    printf("pk.b = "); BN_print_fp(stdout, keys->pk->b); printf("\n");
     // Check if it's indeed prime
     r = BN_check_prime(keys->pk->p, ctx, NULL);
     if (!r) { perror("Failed to generate true prime"); return FAILURE; }

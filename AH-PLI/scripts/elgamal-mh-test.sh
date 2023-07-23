@@ -9,6 +9,12 @@ then
     echo "Please navigate to AH-PLI/"
     exit 1
 fi
+if [[ $# -lt 2 ]];
+then
+    echo "Error: Insufficient arguments provided";
+    echo "Usage ./$0 <security parameter>";
+    exit 1;
+fi
 
 # Global variables
 client_file="input/client.txt"
