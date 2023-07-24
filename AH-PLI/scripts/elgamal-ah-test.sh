@@ -23,7 +23,7 @@ start_size=10
 end_size=100
 sample_size=5
 sec_par=$1
-logfile="logs/elgamal-mh-$sec_par.csv"
+logfile="logs/elgamal-ah-$sec_par.csv"
 
 # Usage `setup_input_files $i`,
 # where `i` is the current entry list size
@@ -60,11 +60,11 @@ do
     do
 	make --quiet clean;
 	make --quiet;
-	printf "%s%d\n" "Begin:  Elgamal MH PLI Protocol #" "$j"
-	./bin/elgamal-client-and-server localhost MH $sec_par input/server.txt input/client.txt
+	printf "%s%d\n" "Begin:  Elgamal AH PLI Protocol #" "$j"
+	./bin/elgamal-client-and-server localhost AH $sec_par input/server.txt input/client.txt
 	#	$pids=$(ps aux | grep "elgamal" | grep -v "grep" | awk '{print $2}')
 	wait
-	printf "%s%d\n\n" "Finish:  Elgamal MH PLI Protocol #" "$j"
+	printf "%s%d\n\n" "Finish:  Elgamal AH PLI Protocol #" "$j"
     done
     echo "-------------------------------------------" >> "$logfile";
 done

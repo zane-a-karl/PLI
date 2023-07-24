@@ -47,12 +47,4 @@ ec_elgamal_ptmul (EcGamalCiphertext *res,
 		  BIGNUM              *b,
 		  EcGamalPk           pk);
 
-int
-ec_elgamal_skip_decrypt_check_equality (EcGamalKeys       keys,
-					EcGamalCiphertext cipher);
-
-int
-ec_elgamal_skip_dlog_check_is_at_infinity (EcGamalKeys         keys,
-					   EcGamalCiphertext cipher);
-
 #endif//_EC_ELGAMAL_UTILS_H_

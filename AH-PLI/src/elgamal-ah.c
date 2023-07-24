@@ -3,6 +3,12 @@
 
 extern int SEC_PAR;
 
+/**
+ * Calculates the ah elgamal encryption of the bn_ptxt
+ * @param the resulting ciphertext structure
+ * @param the public key structure
+ * @param the ptxt to be encrypted
+ */
 int
 ah_elgamal_encrypt (GamalCiphertext *ciphertext,
 		    GamalPk                  pk,
@@ -12,11 +18,11 @@ ah_elgamal_encrypt (GamalCiphertext *ciphertext,
     BIGNUM *bn_rand_elem;
     BIGNUM *gen_exp_ptxt;
     BN_CTX *ctx = BN_CTX_new();
-    if (!ctx) { r = 0; return openssl_error("Failed to create new ctx"); }
+    if (!ctx)            { r = 0; return openssl_error("Failed to make new ctx"); }
     bn_rand_elem = BN_new();
-    if (!bn_rand_elem) { r = 0; return openssl_error("Failed to make new bn"); }
+    if (!bn_rand_elem)   { r = 0; return openssl_error("Failed to make new bn"); }
     gen_exp_ptxt = BN_new();
-    if (!gen_exp_ptxt) { r = 0; return openssl_error("Failed to make new bn"); }
+    if (!gen_exp_ptxt)   { r = 0; return openssl_error("Failed to make new bn"); }
     ciphertext->c1 = BN_new();
     if (!ciphertext->c1) { r = 0; return openssl_error("Failed to make new bn"); }
     ciphertext->c2 = BN_new();
@@ -31,6 +37,10 @@ ah_elgamal_encrypt (GamalCiphertext *ciphertext,
     // Set c2 = g^m * mul_mask^rand_elem
     r = BN_mod_exp(gen_exp_ptxt, pk.generator, bn_plaintext, pk.modulus, ctx);
     if (!r) { return openssl_error("Failed to calc g^ptxt"); }
+    if (BN_is_negative(bn_plaintext)) {
+	BN_mod_inverse(gen_exp_ptxt, gen_exp_ptxt, pk.modulus, ctx);
+	if (!gen_exp_ptxt) { r = 0; return openssl_error("Failed to invert gen_exp_ptxt"); }
+    }
     r = BN_mod_exp(ciphertext->c2, pk.mul_mask, bn_rand_elem, pk.modulus, ctx);
     if (!r) { return openssl_error("Failed to calc h^rand_elem"); }
     r = BN_mod_mul(ciphertext->c2, gen_exp_ptxt, ciphertext->c2, pk.modulus, ctx);
@@ -150,11 +160,10 @@ elgamal_skip_dlog_check_is_one (GamalKeys         keys,
     // Evaluate c2/c1^sk
     r = BN_mod_mul(decrypt_res, cipher.c2, denominator, keys.pk->modulus, ctx);
     if (!r) { return openssl_error("Failed to calc c2/c1^sk"); }
-    r = BN_print_fp(stdout, decrypt_res);
     if (BN_is_one(decrypt_res)) {
-	printf(" -> Found a match!\n");
+	printf("Found a match!\n");
     } else {
-	printf(" -> Not a match.\n");
+	printf("Not a match.\n");
     }
 
     BN_free(denominator);

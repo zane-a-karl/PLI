@@ -15,4 +15,8 @@ mh_ec_elgamal_decrypt (BIGNUM          *bn_plain,
 		       EcGamalKeys          keys,
 		       EcGamalCiphertext  cipher);
 
+int
+ec_elgamal_skip_decrypt_check_equality (EcGamalKeys       keys,
+					EcGamalCiphertext cipher);
+
 #endif//_EC_ELGAMAL_MH_H_

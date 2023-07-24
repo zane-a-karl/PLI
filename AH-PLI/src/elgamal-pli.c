@@ -224,14 +224,14 @@ client_run_elgamal_pli (int                  sockfd,
     if (!r) { return general_error("Failed to parse file for list entries"); }
     /* printf("parsed client list\n"); */
 
-    /* Calculate the mult inv of the client list entries */
+    /* Calculate the negation/mult inv of the client list entries */
     /* printf("Started computing (Enc_pkS(server list) * Enc_pkS(inv client list))^mask \n"); TTICK; */
     BIGNUM *bn_inv_plain[num_entries];
     for (int i = 0; i < num_entries; i++) {
 	if (htype == AH) {
 	    bn_inv_plain[i] = BN_dup(bn_plain[i]);
+	    if (!bn_inv_plain[i]) { r = 0; return openssl_error("Failed to duplicate bn_plain"); }
 	    BN_set_negative(bn_inv_plain[i], 1);
-	    if (!bn_inv_plain[i]) { openssl_error("Failed to negate bn_plain"); }
 	} else {
 	    bn_inv_plain[i] = BN_mod_inverse(NULL, bn_plain[i], server_pk.modulus, ctx);
 	    if (!bn_inv_plain[i]) { r = 0; return openssl_error("Failed to invert bn_plain"); }
@@ -262,10 +262,6 @@ client_run_elgamal_pli (int                  sockfd,
 	bn_rand_mask[i] = BN_new();
 	r = BN_rand_range_ex(bn_rand_mask[i], server_pk.modulus, SEC_PAR, ctx);
 	if (!r) { return openssl_error("Failed to gen rand_exp"); }
-	/* printf("r[%i] = ", i); */
-	/* r = BN_print_fp(stdout, bn_rand_mask[i]); */
-	/* printf("\n"); */
-	/* if (!r) { return openssl_error("Failed to print bn_rand_mask"); } */
     }
     /* printf("generated random masking value\n"); */
 

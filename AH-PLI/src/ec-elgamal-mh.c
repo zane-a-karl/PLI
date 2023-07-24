@@ -116,3 +116,36 @@ mh_ec_elgamal_decrypt (BIGNUM          *bn_plain,
     }
     return SUCCESS;
 }
+
+int
+ec_elgamal_skip_decrypt_check_equality (EcGamalKeys       keys,
+					EcGamalCiphertext cipher)
+{
+    int r = 1;
+    EC_POINT *c1_x_sk;
+    EC_POINT *ecpt_plain;
+    BN_CTX *ctx = BN_CTX_new();
+    if (!ctx) { r = 0; perror("Failed to create new ctx"); return FAILURE; }
+    c1_x_sk = EC_POINT_new(keys.pk->group);
+    if (!c1_x_sk) { r = 0; perror("Failed to make new ecpt"); return FAILURE; }
+    ecpt_plain = EC_POINT_new(keys.pk->group);
+    if (!ecpt_plain) { r = 0; perror("Failed to make new ecpt"); return FAILURE; }
+
+    // Calculate c1 * sk
+    r = EC_POINT_mul(keys.pk->group, c1_x_sk, NULL, cipher.c1, keys.sk, ctx);
+    if (!r) { perror("Failed to calc c1*sk"); return FAILURE; }
+    // Compare c2 and (c1*sk)
+    if (EC_POINT_cmp(keys.pk->group, cipher.c2, c1_x_sk, ctx) == 0) {
+	printf("Found a match!\n");
+    } else {
+	printf("Not a match.\n");
+    }
+
+    EC_POINT_free(c1_x_sk);
+    EC_POINT_free(ecpt_plain);
+    BN_CTX_free(ctx);
+    if (!r) {
+	return FAILURE;
+    }
+    return SUCCESS;
+}
