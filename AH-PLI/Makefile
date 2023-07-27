@@ -28,7 +28,9 @@ EG: $(BIN)/elgamal-client $(BIN)/elgamal-server
 ECEG: $(BIN)/ec-elgamal-client $(BIN)/ec-elgamal-server
 
 $(BIN)/elgamal-%: $(OBJ)/elgamal-%.o $(EG_UTIL_OBJS)
+	mkdir -p $(BIN)
 	$(CC) $(FLAGS) $< $(EG_UTIL_OBJS) -o $@ $(LINK)
+
 $(BIN)/ec-elgamal-%: $(OBJ)/ec-elgamal-%.o $(ECEG_UTIL_OBJS)
 	$(CC) $(FLAGS) $< $(ECEG_UTIL_OBJS) -o $@ $(LINK)
 
@@ -36,6 +38,7 @@ $(BIN): $(OBJS)
 	$(CC) $(FLAGS) $(OBJS) -o $@
 
 $(OBJ)/%.o: $(SRC)/%.c
+	mkdir -p $(OBJ)
 	$(CC) $(FLAGS) -c $< -o $@
 
 dry-run-clean:
