@@ -1,12 +1,12 @@
-#include "../hdr/ec-elgamal-ah.h"
+#include "../../hdr/ec-elgamal/ah-utils.h"
 
-
-extern int SEC_PAR;
 
 int
-ah_ec_elgamal_encrypt (EcGamalCiphertext *cipher,
-		       EcGamalPk             *pk,
-		       BIGNUM          *bn_plain)
+ah_ec_elgamal_encrypt (
+    EcGamalCiphertext *cipher,
+    EcGamalPk             *pk,
+    BIGNUM          *bn_plain,
+    int               sec_par)
 {
     int r = 1;
     BIGNUM *bn_rand_elem;
@@ -19,7 +19,7 @@ ah_ec_elgamal_encrypt (EcGamalCiphertext *cipher,
     cipher->c2 = EC_POINT_new(pk->group);
     if (!cipher->c2) { r = 0; perror("Failed to make new ecpoint"); return FAILURE; }
 
-    r = BN_rand_range_ex(bn_rand_elem, pk->order, SEC_PAR, ctx);
+    r = BN_rand_range_ex(bn_rand_elem, pk->order, sec_par, ctx);
     if (!r) { perror("Failed to gen rand elem"); return FAILURE; }
 
     // Set c1 = G(bn_rand_elem)
@@ -38,18 +38,20 @@ ah_ec_elgamal_encrypt (EcGamalCiphertext *cipher,
 }
 
 int
-ec_elgamal_brute_force_discrete_log (BIGNUM  *exponent,
-				     EcGamalPk     *pk,
-				     EC_POINT *element)
+ec_elgamal_brute_force_discrete_log (
+    BIGNUM  *exponent,
+    EcGamalPk     *pk,
+    EC_POINT *element)
 {
     /* TODO */
     return FAILURE;
 }
 
 int
-ah_ec_elgamal_decrypt (BIGNUM          *bn_plain,
-		       EcGamalKeys          keys,
-		       EcGamalCiphertext  cipher)
+ah_ec_elgamal_decrypt (
+    BIGNUM          *bn_plain,
+    EcGamalKeys          keys,
+    EcGamalCiphertext  cipher)
 {
     int r = 1;
     EC_POINT *c1_x_sk;
@@ -84,8 +86,9 @@ ah_ec_elgamal_decrypt (BIGNUM          *bn_plain,
 }
 
 int
-ec_elgamal_skip_dlog_check_is_at_infinity (EcGamalKeys         keys,
-					   EcGamalCiphertext cipher)
+ec_elgamal_skip_dlog_check_is_at_infinity (
+    EcGamalKeys         keys,
+    EcGamalCiphertext cipher)
 {
     int r = 1;
     EC_POINT *c1_x_sk;

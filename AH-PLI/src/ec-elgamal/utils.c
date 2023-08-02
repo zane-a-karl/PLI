@@ -1,7 +1,5 @@
-#include "../hdr/ec-elgamal-utils.h"
+#include "../../hdr/ec-elgamal/utils.h"
 
-
-extern int SEC_PAR;
 
 /**
  * @param pk is the public key
@@ -9,8 +7,9 @@ extern int SEC_PAR;
  * curve/group specified by openssl/obj_mac.h
  */
 int
-set_ec_group (EcGamalPk *pk,
-	      int       NID)
+set_ec_group (
+    EcGamalPk *pk,
+    int       NID)
 {
     pk->group = EC_GROUP_new_by_curve_name(NID);
     if (!pk->group) { perror("Failed to set pk group to nid"); return FAILURE; }
@@ -24,7 +23,9 @@ set_ec_group (EcGamalPk *pk,
  * @return SUCCESS/FAILURE
  */
 int
-generate_ec_elgamal_keys (EcGamalKeys *keys)
+generate_ec_elgamal_keys (
+    EcGamalKeys *keys,
+    int       sec_par)
 {
     int r;
     const EC_POINT *g;
@@ -41,7 +42,7 @@ generate_ec_elgamal_keys (EcGamalKeys *keys)
     // Initialize sk
     keys->sk = BN_new();
     if (!keys->sk) { r = 0; perror("Failed to alloc keys->sk"); return FAILURE; }
-    r = BN_rand_range_ex(keys->sk, keys->pk->order, SEC_PAR, ctx);
+    r = BN_rand_range_ex(keys->sk, keys->pk->order, sec_par, ctx);
     if (!r) { perror("Failed to generate random sk"); return FAILURE; }
     g = EC_GROUP_get0_generator(keys->pk->group);
     keys->pk->generator = EC_POINT_dup(g, keys->pk->group);
@@ -58,6 +59,15 @@ generate_ec_elgamal_keys (EcGamalKeys *keys)
     keys->pk->b = BN_new();
     r = EC_GROUP_get_curve(keys->pk->group, keys->pk->p, keys->pk->a, keys->pk->b, ctx);
     if (!r) { perror("Failed to get curve params"); return FAILURE; }
+    printf("p = ");
+    BN_print_fp(stdout, keys->pk->p);
+    printf("\n");
+    printf("a = ");
+    BN_print_fp(stdout, keys->pk->a);
+    printf("\n");
+    printf("b = ");
+    BN_print_fp(stdout, keys->pk->b);
+    printf("\n");    
     // Check if it's indeed prime
     r = BN_check_prime(keys->pk->p, ctx, NULL);
     if (!r) { perror("Failed to generate true prime"); return FAILURE; }
@@ -70,10 +80,11 @@ generate_ec_elgamal_keys (EcGamalKeys *keys)
 }
 
 int
-ec_elgamal_add (EcGamalCiphertext *res,
-		EcGamalCiphertext    a,
-		EcGamalCiphertext    b,
-		EcGamalPk           pk)
+ec_elgamal_add (
+    EcGamalCiphertext *res,
+    EcGamalCiphertext    a,
+    EcGamalCiphertext    b,
+    EcGamalPk           pk)
 {
     int r;
     BN_CTX *ctx = BN_CTX_new();
@@ -97,10 +108,11 @@ ec_elgamal_add (EcGamalCiphertext *res,
 }
 
 int
-ec_elgamal_ptmul (EcGamalCiphertext *res,
-		  EcGamalCiphertext    a,
-		  BIGNUM              *b,
-		  EcGamalPk           pk)
+ec_elgamal_ptmul (
+    EcGamalCiphertext *res,
+    EcGamalCiphertext    a,
+    BIGNUM              *b,
+    EcGamalPk           pk)
 {
     int r;
     BN_CTX *ctx = BN_CTX_new();

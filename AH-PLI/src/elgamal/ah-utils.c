@@ -1,7 +1,5 @@
-#include "../hdr/elgamal-ah.h"
+#include "../../hdr/elgamal/ah-utils.h"
 
-
-extern int SEC_PAR;
 
 /**
  * Calculates the ah elgamal encryption of the bn_ptxt
@@ -10,9 +8,11 @@ extern int SEC_PAR;
  * @param the ptxt to be encrypted
  */
 int
-ah_elgamal_encrypt (GamalCiphertext *ciphertext,
-		    GamalPk                  pk,
-		    BIGNUM        *bn_plaintext)
+ah_elgamal_encrypt (
+    GamalCiphertext *ciphertext,
+    GamalPk                  pk,
+    BIGNUM        *bn_plaintext,
+    int                 sec_par)
 {
     int r = 1;
     BIGNUM *bn_rand_elem;
@@ -28,7 +28,7 @@ ah_elgamal_encrypt (GamalCiphertext *ciphertext,
     ciphertext->c2 = BN_new();
     if (!ciphertext->c2) { r = 0; return openssl_error("Failed to make new bn"); }
 
-    r = BN_rand_range_ex(bn_rand_elem, pk.modulus, SEC_PAR, ctx);
+    r = BN_rand_range_ex(bn_rand_elem, pk.modulus, sec_par, ctx);
     if (!r) { return openssl_error("Failed to gen rand elem"); }
 
     // Set c1 = generator^rand_elem
@@ -56,9 +56,10 @@ ah_elgamal_encrypt (GamalCiphertext *ciphertext,
 }
 
 int
-ah_elgamal_decrypt (BIGNUM        *bn_plaintext,
-		    GamalKeys              keys,
-		    GamalCiphertext *ciphertext)
+ah_elgamal_decrypt (
+    BIGNUM        *bn_plaintext,
+    GamalKeys              keys,
+    GamalCiphertext *ciphertext)
 {
     int r = 1;
     BIGNUM *denominator;
@@ -98,9 +99,10 @@ ah_elgamal_decrypt (BIGNUM        *bn_plaintext,
  * @return SUCCESS/FAILURE
  */
 int
-elgamal_brute_force_discrete_log (BIGNUM *exponent,
-				  GamalPk      *pk,
-				  BIGNUM  *element)
+elgamal_brute_force_discrete_log (
+    BIGNUM *exponent,
+    GamalPk      *pk,
+    BIGNUM  *element)
 {
     int r = 1;
     BIGNUM *x, *test_elem;
@@ -131,15 +133,17 @@ elgamal_brute_force_discrete_log (BIGNUM *exponent,
 }
 
 int
-baby_step_giant_step (BIGNUM *bn_plaintext)
+baby_step_giant_step (
+    BIGNUM *bn_plaintext)
 {
     //TODO
     return FAILURE;
 }
 
 int
-elgamal_skip_dlog_check_is_one (GamalKeys         keys,
-				GamalCiphertext cipher)
+elgamal_skip_dlog_check_is_one (
+    GamalKeys         keys,
+    GamalCiphertext cipher)
 {
     int r = 1;
     BIGNUM *denominator;

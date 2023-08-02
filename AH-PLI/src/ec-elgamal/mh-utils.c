@@ -1,12 +1,12 @@
-#include "../hdr/ec-elgamal-mh.h"
+#include "../../hdr/ec-elgamal/mh-utils.h"
 
-
-extern int SEC_PAR;
 
 int
-mh_ec_elgamal_encrypt (EcGamalCiphertext *cipher,
-		       EcGamalPk             *pk,
-		       BIGNUM          *bn_plain)
+mh_ec_elgamal_encrypt (
+    EcGamalCiphertext *cipher,
+    EcGamalPk             *pk,
+    BIGNUM          *bn_plain,
+    int               sec_par)
 {
     int r = 1;
     BIGNUM *bn_rand_elem;
@@ -57,7 +57,7 @@ mh_ec_elgamal_encrypt (EcGamalCiphertext *cipher,
     if (!r)    { perror("Failed to map ptxt to curve"); return FAILURE; }
 
     // Gen random subgroup element
-    r = BN_rand_range_ex(bn_rand_elem, pk->order, SEC_PAR, ctx);
+    r = BN_rand_range_ex(bn_rand_elem, pk->order, sec_par, ctx);
     if (!r) { perror("Failed to gen rand elem"); return FAILURE; }
     // Set c1 = G(bn_rand_elem)
     r = EC_POINT_mul(pk->group, cipher->c1, bn_rand_elem, NULL, NULL, ctx);
@@ -82,9 +82,10 @@ mh_ec_elgamal_encrypt (EcGamalCiphertext *cipher,
 }
 
 int
-mh_ec_elgamal_decrypt (BIGNUM          *bn_plain,
-		       EcGamalKeys          keys,
-		       EcGamalCiphertext  cipher)
+mh_ec_elgamal_decrypt (
+    BIGNUM          *bn_plain,
+    EcGamalKeys          keys,
+    EcGamalCiphertext  cipher)
 {
     int r = 1;
     EC_POINT *c1_x_sk;
@@ -118,8 +119,9 @@ mh_ec_elgamal_decrypt (BIGNUM          *bn_plain,
 }
 
 int
-ec_elgamal_skip_decrypt_check_equality (EcGamalKeys       keys,
-					EcGamalCiphertext cipher)
+ec_elgamal_skip_decrypt_check_equality (
+    EcGamalKeys       keys,
+    EcGamalCiphertext cipher)
 {
     int r = 1;
     EC_POINT *c1_x_sk;

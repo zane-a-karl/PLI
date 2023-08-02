@@ -1,43 +1,44 @@
-#include "../hdr/elgamal-pli.h"
+#include "../hdr/pli-elgamal-ah.h"
 
 
 extern uint64_t total_bytes;
-extern int SEC_PAR;
 static struct timespec t1,t2;
 static double sec;
 static FILE *logfs;
 static char *logfile;
 
-#define TSTART(htype)							\
-    snprintf(logfile, 32, "%s-%s-%d.%s", "logs/elgamal", htype, SEC_PAR, "csv"); \
-    logfs = fopen(logfile, "a");					\
-    printf("Starting the clock: \n");					\
-    clock_gettime(CLOCK_MONOTONIC, &t1);
-/* #define TSTART logfs = stdout; \ */
-/*     printf("Starting the clock: \n"); \ */
+/* #define TSTART(sec_par)							\ */
+/*     snprintf(logfile, 32, "%s-%s-%d.%s", "logs/elgamal", "AH", sec_par, "csv"); \ */
+/*     logfs = fopen(logfile, "a");					\ */
+/*     printf("Starting the clock: \n");					\ */
 /*     clock_gettime(CLOCK_MONOTONIC, &t1); */
+#define TSTART(sec_par)				\
+    logfs = stdout;				\
+    printf("Starting the clock: \n");		\
+    clock_gettime(CLOCK_MONOTONIC, &t1);
 
 #define TTICK clock_gettime(CLOCK_MONOTONIC, &t2);			\
     sec = (t2.tv_sec - t1.tv_sec) + (t2.tv_nsec - t1.tv_nsec) / 1000000000.0; \
     fprintf(logfs,"Line:%5d, Time = %f\n",__LINE__,sec);
 
-#define COLLECT_LOG_ENTRY(secpar, n_entries, bytes)			\
+#define COLLECT_LOG_ENTRY(sec_par, n_entries, bytes)			\
     printf("Ending the clock: \n");					\
     clock_gettime(CLOCK_MONOTONIC, &t2);				\
     sec = (t2.tv_sec - t1.tv_sec) + (t2.tv_nsec - t1.tv_nsec) / 1000000000.0; \
-    fprintf(logfs, "%d, ", SEC_PAR);					\
+    fprintf(logfs, "%d, ", sec_par);					\
     fprintf(logfs, "%d, ", n_entries);					\
     fprintf(logfs, "%" PRIu64 ", ", bytes);				\
     fprintf(logfs,"%f\n", sec);						\
     fclose(logfs);
 
 int
-server_run_elgamal_pli (int                  new_fd,
-			enum HomomorphismType htype,
-			char              *filename)
+server_run_pli_elgamal_ah (
+    int                  new_fd,
+    int                 sec_par,
+    char              *filename)
 {
     logfile = calloc(32, sizeof(char));
-    /* TSTART; */
+    /* TSTART(sec_par); */
     int r;
     int num_entries = 0;
     GamalKeys server_keys;
@@ -48,16 +49,12 @@ server_run_elgamal_pli (int                  new_fd,
 
     // Generate Keys
     /* printf("Started generating server keys\n"); TTICK; */
-    r = generate_elgamal_keys(&server_keys);
+    r = generate_elgamal_keys(&server_keys, sec_par);
     if (!r) { return openssl_error("Failed to gen EG keys"); }
     /* printf("Finished generating server keys\n\n"); TTICK; */
 
     // Start here to exclude key generation
-    if (htype == AH) {
-	TSTART("ah");
-    } else {
-	TSTART("mh");
-    }
+    TSTART(sec_par);
 
     // Parse number of list entries from <filename>
     r = parse_file_for_num_entries(&num_entries, filename);
@@ -91,11 +88,7 @@ server_run_elgamal_pli (int                  new_fd,
     /* printf("Started sending Enc_pkS(server list)\n"); TTICK; */
     server_cipher = calloc(num_entries, sizeof(*server_cipher));
     for (int i=0; i < num_entries; i++) {
-	if (htype == AH) {
-	    r = ah_elgamal_encrypt(&server_cipher[i], *server_keys.pk, bn_plain[i]);
-	} else {
-	    r = mh_elgamal_encrypt(&server_cipher[i], *server_keys.pk, bn_plain[i]);
-	}
+	r = ah_elgamal_encrypt(&server_cipher[i], *server_keys.pk, bn_plain[i], sec_par);
 	if (!r) { return general_error("Failed to encrypt server plaintext"); }
 	// Send C1
 	r = send_msg(new_fd, server_cipher[i].c1, "server: sent server_cipher.c1", Bignum);
@@ -127,16 +120,12 @@ server_run_elgamal_pli (int                  new_fd,
     /* printf("Started pli ciphertext comparison\n"); TTICK; */
     for (int i=0; i<num_entries; i++) {
 	printf("Check#%*i -> ", -3, i);
-	if (htype == AH) {
-	    r = elgamal_skip_dlog_check_is_one(server_keys, client_cipher[i]);
-	} else {
-	    r = elgamal_skip_decrypt_check_equality(server_keys, client_cipher[i]);
-	}
+	r = elgamal_skip_dlog_check_is_one(server_keys, client_cipher[i]);
 	if(!r) { return general_error("Failed skip decrypt check"); }
     }
     /* printf("Finished pli ciphertext comparison\n\n"); TTICK; */
     /* printf("Total bytes sent during protocol = %" PRIu64 "\n", total_bytes); */
-    COLLECT_LOG_ENTRY(SEC_PAR, num_entries, total_bytes);
+    COLLECT_LOG_ENTRY(sec_par, num_entries, total_bytes);
 
     free(logfile);
     BN_free(server_keys.pk->modulus);
@@ -163,11 +152,12 @@ server_run_elgamal_pli (int                  new_fd,
 }
 
 int
-client_run_elgamal_pli (int                  sockfd,
-			enum HomomorphismType htype,
-			char *             filename)
+client_run_pli_elgamal_ah (
+    int                  sockfd,
+    int                 sec_par,
+    char *             filename)
 {
-    /* TSTART; */
+    /* TSTART(sec_par); */
     int r;
     int num_entries = 0;
     GamalPk server_pk;
@@ -175,7 +165,6 @@ client_run_elgamal_pli (int                  sockfd,
     GamalCiphertext *client_cipher;
     BIGNUM **bn_plain;
     BN_CTX *ctx = BN_CTX_new();
-
     /* Parse number of list entries from <filename> */
     r = parse_file_for_num_entries(&num_entries, filename);
     if (!r) { return general_error("Failed to parse file for number of list entries"); }
@@ -228,23 +217,15 @@ client_run_elgamal_pli (int                  sockfd,
     /* printf("Started computing (Enc_pkS(server list) * Enc_pkS(inv client list))^mask \n"); TTICK; */
     BIGNUM *bn_inv_plain[num_entries];
     for (int i = 0; i < num_entries; i++) {
-	if (htype == AH) {
-	    bn_inv_plain[i] = BN_dup(bn_plain[i]);
-	    if (!bn_inv_plain[i]) { r = 0; return openssl_error("Failed to duplicate bn_plain"); }
-	    BN_set_negative(bn_inv_plain[i], 1);
-	} else {
-	    bn_inv_plain[i] = BN_mod_inverse(NULL, bn_plain[i], server_pk.modulus, ctx);
-	    if (!bn_inv_plain[i]) { r = 0; return openssl_error("Failed to invert bn_plain"); }
-	}
+	bn_inv_plain[i] = BN_dup(bn_plain[i]);
+	if (!bn_inv_plain[i]) { r = 0; return openssl_error("Failed to duplicate bn_plain"); }
+	BN_set_negative(bn_inv_plain[i], 1);
+
     }
     /* Encrypt inverse of client list entries under the server public key */
     client_cipher = calloc(num_entries, sizeof(*client_cipher));
     for (int i = 0; i < num_entries; i++) {
-	if (htype == AH) {
-	    r = ah_elgamal_encrypt(&client_cipher[i], server_pk, bn_inv_plain[i]);
-	} else {
-	    r = mh_elgamal_encrypt(&client_cipher[i], server_pk, bn_inv_plain[i]);
-	}
+	r = ah_elgamal_encrypt(&client_cipher[i], server_pk, bn_inv_plain[i], sec_par);
 	if (!r) { return general_error("Error encrypting bn_inv_plain"); }
     }
 
@@ -260,7 +241,7 @@ client_run_elgamal_pli (int                  sockfd,
     BIGNUM *bn_rand_mask[num_entries];
     for (int i = 0; i < num_entries; i++) {
 	bn_rand_mask[i] = BN_new();
-	r = BN_rand_range_ex(bn_rand_mask[i], server_pk.modulus, SEC_PAR, ctx);
+	r = BN_rand_range_ex(bn_rand_mask[i], server_pk.modulus, sec_par, ctx);
 	if (!r) { return openssl_error("Failed to gen rand_exp"); }
     }
     /* printf("generated random masking value\n"); */

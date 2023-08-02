@@ -27,11 +27,16 @@
 #define MAX_FILE_BYTES 256
 
 enum PartyType {
-    CLIENT, SERVER
+    CLIENT,
+    SERVER,
+    NUM_PARTY_TYPES
 };
 
 enum MessageType {
-    Bignum, Ecpoint, Integer
+    Bignum,
+    Ecpoint,
+    Integer,
+    NUM_MESSAGE_TYPES
 };
 
 int
@@ -42,10 +47,6 @@ openssl_error (char *error_msg);
 
 int
 log_base2 (int sec_par);
-
-void
-set_security_param (int  *dst,
-		    char *src);
 
 void *
 get_in_addr (struct sockaddr *sa);

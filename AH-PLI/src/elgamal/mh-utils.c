@@ -1,12 +1,12 @@
-#include "../hdr/elgamal-mh.h"
+#include "../../hdr/elgamal/mh-utils.h"
 
-
-extern int SEC_PAR;
 
 int
-mh_elgamal_encrypt (GamalCiphertext *cipher,
-		    GamalPk              pk,
-		    BIGNUM    *bn_plaintext)
+mh_elgamal_encrypt (
+    GamalCiphertext *cipher,
+    GamalPk              pk,
+    BIGNUM    *bn_plaintext,
+    int             sec_par)
 {
     int r = 1;
     BIGNUM *bn_rand_elem;
@@ -18,7 +18,7 @@ mh_elgamal_encrypt (GamalCiphertext *cipher,
     if (!cipher->c1) { r = 0; return openssl_error("Failed to make new bn");  }
     cipher->c2 = BN_new();
     if (!cipher->c2) { r = 0; return openssl_error("Failed to make new bn"); }
-    r = BN_rand_range_ex(bn_rand_elem, pk.modulus, SEC_PAR, ctx);
+    r = BN_rand_range_ex(bn_rand_elem, pk.modulus, sec_par, ctx);
     if (!r) { return openssl_error("Failed to gen rand elem"); }
 
     // Set c1 = generator^rand_elem
@@ -39,9 +39,10 @@ mh_elgamal_encrypt (GamalCiphertext *cipher,
 }
 
 int
-mh_elgamal_decrypt (BIGNUM    *bn_plaintext,
-		    GamalKeys          keys,
-		    GamalCiphertext  cipher)
+mh_elgamal_decrypt (
+    BIGNUM    *bn_plaintext,
+    GamalKeys          keys,
+    GamalCiphertext  cipher)
 {
     int r = 1;
     BIGNUM *denominator;
@@ -69,8 +70,9 @@ mh_elgamal_decrypt (BIGNUM    *bn_plaintext,
 }
 
 int
-elgamal_skip_decrypt_check_equality (GamalKeys         keys,
-				     GamalCiphertext cipher)
+elgamal_skip_decrypt_check_equality (
+    GamalKeys         keys,
+    GamalCiphertext cipher)
 {
     int r = 1;
     BIGNUM *denominator;

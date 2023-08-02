@@ -1,8 +1,7 @@
-#include "../hdr/ec-elgamal-pli.h"
+#include "../hdr/protocol-utils.h"
 
 
 #define LISTENER_QUEUE_LEN 10
-extern int SEC_PAR;
 
 int
 main (int    argc,
@@ -15,13 +14,16 @@ main (int    argc,
     int client_proc_status;
     int server_cnntn_proc_status;
     int accept_flag;
-    int sockfd_server;
+    int sockfd_server; /* Listen on sockfd_server */
     int sockfd_client;
-    int new_fd_server;
-    struct addrinfo *service_info_server; // field values for port "service"
-    struct addrinfo *service_info_client; // field values for port "service"
+    int new_fd_server; /* New connection on new_fd_server */
+    struct addrinfo *service_info_server; /* Field values for port "service" */
+    struct addrinfo *service_info_client; /* Field values for port "service" */
     char *hostname;
-    char *homomorphism_type;
+    enum PliMethod pmeth;
+    enum ElgamalFlavor eflav;
+    enum HomomorphismType htype;
+    int sec_par;
     char *filename_server;
     char *filename_client;
     int port_number;
@@ -29,17 +31,21 @@ main (int    argc,
     /* The port server accepts connections on, and the port client connects to at server. */
     const int PORT = 3490;
 
-    if (argc != 6) {
-	// MH = multiplicatively homomorphic
-	// AH = additively homomorphic
-	printf("usage: ./<executable> <hostname> <MH or AH> <security parameter> <filename_server> <filename_client>\n");
-	exit(1);
+    if (argc != 8) {
+	printf("usage: %s", argv[0]);
+	printf("<hostname> <pli method>");
+	printf("<security parameter>");
+	printf("<filename_server> <filename_client>\n");
+	printf("<EG or ECEG> <MH or AH>\n");
+	return 1;
     }
-    hostname          = argv[1];
-    homomorphism_type = argv[2];
-    set_security_param(&SEC_PAR, argv[3]);
-    filename_server   = argv[4];
-    filename_client   = argv[5];
+    hostname        =                                  argv[1];
+    r               =        str_to_pli_method(&pmeth, argv[2]);
+    r               =                str2int(&sec_par, argv[3]);
+    filename_server =                                  argv[4];
+    filename_client =                                  argv[5];
+    r               =    str_to_elgamal_flavor(&eflav, argv[6]);
+    r               = str_to_homomorphism_type(&htype, argv[7]);
 
     srand (time(NULL));
     port_number = PORT + (rand() % PORT);
@@ -56,25 +62,21 @@ main (int    argc,
 	perror("Failed to execute fork() for client process");
 	return 1;
     } else if (fork_result == 0) {
-	// Child process for Client
+	/* Child process for Client */
 	close(sockfd_server);
 	hardcode_socket_parameters(&service_info_client, port, CLIENT, hostname);
 	set_socket_and_connect(&sockfd_client, &service_info_client);
 	freeaddrinfo(service_info_client);
-	// Start the protocol
-	r = strncmp(homomorphism_type, "AH", 3);
-	if (r == 0) {
-	    r = client_run_ec_elgamal_pli(sockfd_client, AH, filename_client);
-	} else {
-	    r = client_run_ec_elgamal_pli(sockfd_client, MH, filename_client);
-	}
+	/* Start the protocol */
+	r = run(sockfd, EG, MH, sec_par, filename);
+	r = run(pli_callback[CLIENT][pmeth][eflav][htype], sockfd, sec_par, filename_client);
 	if (!r) {
-	    perror("client: Failed during pli execution");
+	    perror("Client: Failed during pli execution");
 	    return 1;
+	} else {
+	    printf("Client: Completed pli execution\n");
+	    return 0;
 	}
-	printf("client: Completed pli execution\n");
-	close(sockfd_client);
-	return 0;
     }
     client_proc_id = fork_result;
 
@@ -92,27 +94,22 @@ main (int    argc,
 	    perror("Failed to execute fork() for server connection");
 	    return 1;
 	} else if (fork_result == 0) {
-	    // Child process for server accepted connection
+	    /* Child process for server accepted connection */
 	    close(sockfd_server);
-	    // Start the protocol
-	    r = strncmp(homomorphism_type, "AH", 3);
-	    if (r == 0) {
-		r = server_run_ec_elgamal_pli(new_fd_server, AH, filename_server);
-	    } else {
-		r = server_run_ec_elgamal_pli(new_fd_server, MH, filename_server);
-	    }
+	    /* Start the protocol */
+	    r = run(pli_callback[SERVER][pmeth][eflav][htype], new_fd, sec_par, filename_server);
 	    if (!r) {
-		perror("server: Failed during pli execution");
+		perror("Server: Failed during pli execution");
 		return 1;
 	    } else {
-		fprintf(stderr, "server: Completed pli execution\n");
+		printf("Server: Completed pli execution\n");
 		return 0;
 	    }
 	    close(new_fd_server);
-	} // fork server connection
+	} /* fork server connection */
 	server_cnntn_proc_id = fork_result;
 	close(new_fd_server);
-    } // while loop
+    } /* while loop */
     reap_all_dead_processes();
     fork_result = waitpid(client_proc_id, &client_proc_status, WUNTRACED);
     if (fork_result != -1) {

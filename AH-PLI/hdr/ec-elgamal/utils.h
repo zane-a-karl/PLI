@@ -4,7 +4,7 @@
 #include <openssl/bn.h> // BIGNUM
 #include <openssl/ec.h> // EC_POINT
 #include <openssl/obj_mac.h> // NID's
-#include "../hdr/utils.h"
+#include "../../hdr/utils.h"
 
 /* Some Curves */
 /* NID_X9_62_prime192v1 */
@@ -29,22 +29,27 @@ typedef struct EcGamalCiphertext {
 } EcGamalCiphertext;
 
 int
-set_ec_group (EcGamalPk *pk,
-	      int       NID);
+set_ec_group (
+    EcGamalPk *pk,
+    int       NID);
 
 int
-generate_ec_elgamal_keys (EcGamalKeys *keys);
+generate_ec_elgamal_keys (
+    EcGamalKeys *keys,
+    int       sec_par);
 
 int
-ec_elgamal_add (EcGamalCiphertext *res,
-		EcGamalCiphertext    a,
-		EcGamalCiphertext    b,
-		EcGamalPk           pk);
+ec_elgamal_add (
+    EcGamalCiphertext *res,
+    EcGamalCiphertext    a,
+    EcGamalCiphertext    b,
+    EcGamalPk           pk);
 
 int
-ec_elgamal_ptmul (EcGamalCiphertext *res,
-		  EcGamalCiphertext    a,
-		  BIGNUM              *b,
-		  EcGamalPk           pk);
+ec_elgamal_ptmul (
+    EcGamalCiphertext *res,
+    EcGamalCiphertext    a,
+    BIGNUM              *b,
+    EcGamalPk           pk);
 
 #endif//_EC_ELGAMAL_UTILS_H_

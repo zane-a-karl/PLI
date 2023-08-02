@@ -2,7 +2,6 @@
 
 
 uint64_t total_bytes = 0;
-int SEC_PAR;
 
 /**
  * Always returns FAILURE
@@ -38,13 +37,6 @@ log_base2 (int sec_par)
 	result++;
     }
     return result;
-}
-
-void
-set_security_param (int  *dst,
-		    char *src)
-{
-    sscanf(src, "%d", dst);
 }
 
 // get sockaddr, IPv4 or IPv6:

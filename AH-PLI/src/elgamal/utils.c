@@ -1,25 +1,72 @@
-#include "../hdr/elgamal-utils.h"
+#include "../../hdr/elgamal/utils.h"
 
+/**
+ *
+ */
+int
+str_to_homomorphism_type (
+    HomomorphismType *ht, 
+    char            *str)
+{
+    const int max_htype_str_len = 3;
+    if ( 0 == strncmp(str, "AH", max_htype_str_len) ) {
+	*ht = AH;
+    } else if ( 0 == strncmp(str, "MH", max_htype_str_len) ) {
+	*ht = MH;
+    } else {
+	return FAILURE;
+    }
+    return SUCCESS;
+}
 
-extern int SEC_PAR;
+/**
+ *
+ */
+int
+str_to_elgamal_flavor (
+    ElgamalFlavor *ef, 
+    char         *str)
+{
+    const int max_htype_str_len = 5;
+    if ( 0 == strncmp(str, "EG", max_htype_str_len) ) {
+	*ef = EG;
+    } else if ( 0 == strncmp(str, "ECEG", max_htype_str_len) ) {
+	*ef = ECEG;
+    } else {
+	return FAILURE;
+    }
+    return SUCCESS;
+}
+
+void
+str2int (
+    int  *output,
+    char *input)
+{
+    int r = sscanf(input, "%d", output);
+    if (!r) { return FAILURE; }
+    return SUCCESS;
+}
 
 /**
  * Reads from the file 'filename' and
- * takes the log_base2('SEC_PAR')-th bignum
+ * takes the log_base2('sec_par')-th bignum
  * @param output bignum from ascii hex string
  * @param filename of file to parse
  * @return SUCCESS/FAILURE
  */
 int
-parse_hardcoded_bignum (BIGNUM      **output,
-			const char *filename)
+parse_hardcoded_bignum (
+    BIGNUM      **output,
+    int          sec_par,
+    const char *filename)
 {
     const int len = 2048;
     char *buf = calloc(len, sizeof(char));
     int c = 0;
     int r = 0;
     int i = 0;
-    int sec_par_i = log_base2(SEC_PAR);
+    int sec_par_i = log_base2(sec_par);
     int buf_i = 0;
     FILE *fin = fopen(filename, "r");
     if (!fin) {	return general_error("Failed to open hardcoded input file"); }
@@ -58,7 +105,9 @@ parse_hardcoded_bignum (BIGNUM      **output,
  * @return SUCCESS/FAILURE
  */
 int
-generate_elgamal_keys (GamalKeys *keys)
+generate_elgamal_keys (
+    GamalKeys *keys,
+    int     sec_par)
 {
     int r;
     /* int is_safe = 1; */
@@ -81,12 +130,12 @@ generate_elgamal_keys (GamalKeys *keys)
     /* Run openssl dhparam -text -out dhparams.pem -2 2048 */
     /* -2 means it's a safe prime */
     /* r = parse_modulus_from_dhparams_file(); */
-    r = parse_hardcoded_bignum(&keys->pk->modulus, "input/primes.txt");
+    r = parse_hardcoded_bignum(&keys->pk->modulus, sec_par, "input/primes.txt");
     /* Generates safe prime modulus on the fly */
-    /* Fails for large SEC_PAR value due to low internal entropy */
+    /* Fails for large sec_par value due to low internal entropy */
     /* r = BN_set_word(add, 8ULL); */
     /* if (!r) { return openssl_error("Failed to set add"); } */
-    /* r = BN_generate_prime_ex2(keys->pk->modulus, SEC_PAR, is_safe, */
+    /* r = BN_generate_prime_ex2(keys->pk->modulus, sec_par, is_safe, */
     /* 			       add, keys->pk->generator, NULL, ctx); */
     /* Get prime from https://bigprimes.org/ */
     /* r = BN_set_word(keys->pk->modulus, 172758658065239ULL); */
@@ -96,10 +145,10 @@ generate_elgamal_keys (GamalKeys *keys)
     if (!r) { return openssl_error("Failed to generate true prime"); }
 
     // Gen the field element secret key
-    /* This will fail for high values of SEC_PAR due to your computer having low entropy I guess */
-    /* r = BN_rand_range_ex(keys->sk->secret, keys->pk->modulus, SEC_PAR, ctx); */
+    /* This will fail for high values of sec_par due to your computer having low entropy I guess */
+    /* r = BN_rand_range_ex(keys->sk->secret, keys->pk->modulus, sec_par, ctx); */
     /* If you need things to not fail just grab one of the hardcoded values */
-    r = parse_hardcoded_bignum(&keys->sk->secret, "input/secret-keys.txt");
+    r = parse_hardcoded_bignum(&keys->sk->secret, sec_par, "input/secret-keys.txt");
     if (!r) { return openssl_error("Failed to gen secret key"); }
     // Gen the field element mul_mask
     r = BN_mod_exp(keys->pk->mul_mask, keys->pk->generator,
@@ -122,10 +171,11 @@ generate_elgamal_keys (GamalKeys *keys)
  * @return SUCCESS/FAILURE
  */
 int
-elgamal_mul (GamalCiphertext *res,
-	     GamalCiphertext    a,
-	     GamalCiphertext    b,
-	     BIGNUM      *modulus)
+elgamal_mul (
+    GamalCiphertext *res,
+    GamalCiphertext    a,
+    GamalCiphertext    b,
+    BIGNUM      *modulus)
 {
     int r = 1;
     BN_CTX *ctx = BN_CTX_new();
@@ -155,10 +205,11 @@ elgamal_mul (GamalCiphertext *res,
  * @return SUCCESS/FAILURE
  */
 int
-elgamal_exp (GamalCiphertext *res,
-	     GamalCiphertext    a,
-	     BIGNUM     *exponent,
-	     BIGNUM      *modulus)
+elgamal_exp (
+    GamalCiphertext *res,
+    GamalCiphertext    a,
+    BIGNUM     *exponent,
+    BIGNUM      *modulus)
 {
     int r = 1;
     BN_CTX *ctx = BN_CTX_new();
