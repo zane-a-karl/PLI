@@ -8,7 +8,7 @@
  * @param the ptxt to be encrypted
  */
 int
-ah_elgamal_encrypt (
+elgamal_ah_encrypt (
     GamalCiphertext *ciphertext,
     GamalPk                  pk,
     BIGNUM        *bn_plaintext,
@@ -28,7 +28,17 @@ ah_elgamal_encrypt (
     ciphertext->c2 = BN_new();
     if (!ciphertext->c2) { r = 0; return openssl_error("Failed to make new bn"); }
 
-    r = BN_rand_range_ex(bn_rand_elem, pk.modulus, sec_par, ctx);
+    switch (sec_par) {
+    case 2048:
+	r = BN_rand_range_ex(bn_rand_elem, pk.modulus, 224, ctx);
+	break;
+    case 1024:
+	r = BN_rand_range_ex(bn_rand_elem, pk.modulus, 160, ctx);
+	break;
+    default:
+	r = BN_rand_range_ex(bn_rand_elem, pk.modulus, sec_par, ctx);
+	break;
+    }
     if (!r) { return openssl_error("Failed to gen rand elem"); }
 
     // Set c1 = generator^rand_elem
@@ -56,7 +66,7 @@ ah_elgamal_encrypt (
 }
 
 int
-ah_elgamal_decrypt (
+elgamal_ah_decrypt (
     BIGNUM        *bn_plaintext,
     GamalKeys              keys,
     GamalCiphertext *ciphertext)
@@ -143,7 +153,8 @@ baby_step_giant_step (
 int
 elgamal_skip_dlog_check_is_one (
     GamalKeys         keys,
-    GamalCiphertext cipher)
+    GamalCiphertext cipher,
+    int           *matches)
 {
     int r = 1;
     BIGNUM *denominator;
@@ -165,9 +176,7 @@ elgamal_skip_dlog_check_is_one (
     r = BN_mod_mul(decrypt_res, cipher.c2, denominator, keys.pk->modulus, ctx);
     if (!r) { return openssl_error("Failed to calc c2/c1^sk"); }
     if (BN_is_one(decrypt_res)) {
-	printf("Found a match!\n");
-    } else {
-	printf("Not a match.\n");
+	*matches += 1;
     }
 
     BN_free(denominator);

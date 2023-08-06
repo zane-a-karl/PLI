@@ -1,11 +1,13 @@
-#include "../../hdr/protocol-utils.h"
+#include "../../hdr/protocols/utils.h"
+
 
 /* Client connects to this port at the server */
 #define PORT "3490"
 
 int
-main (int    argc,
-      char **argv)
+main (
+    int    argc,
+    char **argv)
 {
     int r;
     int sockfd;
@@ -26,7 +28,7 @@ main (int    argc,
     }
     hostname =                                  argv[1];
     r        =        str_to_pli_method(&pmeth, argv[2]);
-    r        =                str2int(&sec_par, argv[3]);
+    r        =             str_to_int(&sec_par, argv[3]);
     filename =                                  argv[4];
     r        =    str_to_elgamal_flavor(&eflav, argv[5]);
     r        = str_to_homomorphism_type(&htype, argv[6]);
@@ -36,7 +38,7 @@ main (int    argc,
     freeaddrinfo(service_info);
 
     /* Start the protocol */
-    r = run(pli_callback[CLIENT][pmeth][eflav][htype], sockfd, sec_par, filename);
+    r = run(callback[CLIENT][pmeth][eflav][htype], sockfd, sec_par, filename);
     if (!r) {
 	close(sockfd);
 	perror("client: Failed during pli execution");

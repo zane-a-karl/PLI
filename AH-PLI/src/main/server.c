@@ -1,12 +1,13 @@
-#include "../../hdr/protocol-utils.h"
+#include "../../hdr/protocols/utils.h"
 
 
 #define PORT "3490" /* Clients will connect to this port on the server */
 #define LISTENER_QUEUE_LEN 10
 
 int
-main (int argc,
-      char **argv)
+main (
+    int    argc,
+    char **argv)
 {
     int r;
     int sockfd; /* Listen on sockfd */
@@ -26,7 +27,7 @@ main (int argc,
 	return 1;
     }
     r        =        str_to_pli_method(&pmeth, argv[1]);
-    r        =                str2int(&sec_par, argv[2]);
+    r        =             str_to_int(&sec_par, argv[2]);
     filename =                                  argv[3];
     r        =    str_to_elgamal_flavor(&eflav, argv[4]);
     r        = str_to_homomorphism_type(&htype, argv[5]);
@@ -48,7 +49,7 @@ main (int argc,
 	    /* Child process doesn't need listener socket */
 	    close(sockfd);
 	    /* Start the protocol */
-	    r = run(pli_callback[SERVER][pmeth][eflav][htype], new_fd, sec_par, filename);
+	    r = run(callback[SERVER][pmeth][eflav][htype], new_fd, sec_par, filename);
 	    if (!r) {
 		close(new_fd);
 		perror("Server: Failed during pli execution");

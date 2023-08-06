@@ -5,44 +5,51 @@ SRC=src
 OBJ=obj
 HDR=hdr
 BIN=bin
-SRCS=$(wildcard $(SRC)/*.c)
-HDRS=$(wildcard $(HDR)/*.h)
+MAIN=main
+EG="elgamal"
+ECEG="ecelgamal"
+PROTOCOLS="protocols"
+SRCS=$(wildcard $(SRC)/*.c) $(wildcard $(SRC)/**/*.c)
+HDRS=$(wildcard $(HDR)/*.h) $(wildcard $(HDR)/**/*.h)
 OBJS=$(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(SRCS))
 
-EG_UTIL_OBJS=$(filter-out $(OBJ)/%client.o $(OBJ)/%server.o $(OBJ)/ec%, $(OBJS))
-ECEG_UTIL_OBJS=$(filter-out $(OBJ)/%client.o $(OBJ)/%server.o $(OBJ)/elgamal%, $(OBJS))
-CLSR_OBJS=$(filter $(OBJ)/%client.o $(OBJ)/%server.o, $(OBJS))
+NOT_MAIN_OBJS=$(filter-out $(OBJ)/$(MAIN)%.o, $(OBJS))
+MAIN_OBJS=$(filter $(OBJ)/$(MAIN)%.o, $(OBJS))
 
-all: EG ECEG EG_BOTH ECEG_BOTH
-# debugging commands
-# $(info SRCS: $(SRCS))
-# $(info HDRS: $(HDRS))
-# $(info EG_UTIL_OBJS: $(EG_UTIL_OBJS))
-# $(info ECEG_UTIL_OBJS: $(ECEG_UTIL_OBJS))
-# $(info CLSR_OBJS: $(CLSR_OBJS))
-# $(info OBJS: $(OBJS))
+all: DIR_SETUP CLIENT SERVER CLIENT_AND_SERVER
 
-EG_BOTH: $(BIN)/elgamal-client-and-server
-ECEG_BOTH: $(BIN)/ec-elgamal-client-and-server
-EG: $(BIN)/elgamal-client $(BIN)/elgamal-server
-ECEG: $(BIN)/ec-elgamal-client $(BIN)/ec-elgamal-server
+DEBUG:
+	$(info SRCS: $(SRCS))
+	$(info HDRS: $(HDRS))
+	$(info OBJS: $(OBJS))
+	$(info NOT_MAIN_OBJS: $(NOT_MAIN_OBJS))
+	$(info MAIN_OBJS:  $(MAIN_OBJS))
 
-$(BIN)/elgamal-%: $(OBJ)/elgamal-%.o $(EG_UTIL_OBJS)
-	mkdir -p $(BIN)
-	$(CC) $(FLAGS) $< $(EG_UTIL_OBJS) -o $@ $(LINK)
+DIR_SETUP:
+	if ! [[ -d $(BIN) ]]; then mkdir $(BIN); fi
+	if ! [[ -d $(BIN)/$(MAIN) ]]; then mkdir $(BIN)/$(MAIN); fi
+	if ! [[ -d $(OBJ) ]]; then mkdir $(OBJ); fi
+	if ! [[ -d $(OBJ)/$(MAIN) ]]; then mkdir $(OBJ)/$(MAIN); fi
+	if ! [[ -d $(OBJ)/$(EG) ]]; then mkdir $(OBJ)/$(EG); fi
+	if ! [[ -d $(OBJ)/$(ECEG) ]]; then mkdir $(OBJ)/$(ECEG); fi
+	if ! [[ -d $(OBJ)/$(PROTOCOLS) ]]; then mkdir $(OBJ)/$(PROTOCOLS); fi
 
-$(BIN)/ec-elgamal-%: $(OBJ)/ec-elgamal-%.o $(ECEG_UTIL_OBJS)
-	$(CC) $(FLAGS) $< $(ECEG_UTIL_OBJS) -o $@ $(LINK)
+CLIENT: $(BIN)/$(MAIN)/client
+SERVER: $(BIN)/$(MAIN)/server
+CLIENT_AND_SERVER: $(BIN)/$(MAIN)/client-and-server
+
+$(BIN)/$(MAIN)/%: $(OBJ)/$(MAIN)/%.o $(NOT_MAIN_OBJS)
+	$(CC) $(FLAGS) $< $(NOT_MAIN_OBJS) -o $@ $(LINK)
 
 $(BIN): $(OBJS)
 	$(CC) $(FLAGS) $(OBJS) -o $@
 
 $(OBJ)/%.o: $(SRC)/%.c
-	mkdir -p $(OBJ)
 	$(CC) $(FLAGS) -c $< -o $@
 
 dry-run-clean:
-	echo $(RM) -ri $(OBJ)/* $(BIN)/* $(SRC)/*~ $(HDR)/*~ | tr -s ' ' | cut -d ' ' -f 1-100 | fmt -w 1
+	echo $(RM) -ri $(OBJ)/* $(BIN)/* $(SRC)/*~ $(HDR)/*~ | \
+tr -s ' ' | cut -d ' ' -f 1-100 | fmt -w 1
 
 clean:
 	$(RM) -r $(OBJ)/* $(BIN)/* $(SRC)/*~ $(HDR)/*~

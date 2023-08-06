@@ -2,7 +2,7 @@
 #define _ELGAMAL_UTILS_H_
 
 #include <openssl/bn.h>
-#include "../protocol-utils.h"
+#include "../utils.h"
 
 
 typedef struct GamalPk {
@@ -24,21 +24,6 @@ typedef struct GamalCiphertext {
     BIGNUM *c1;
     BIGNUM *c2;
 } GamalCiphertext;
-
-int
-str_to_homomorphism_type (
-    enum HomomorphismType *ht, 
-    char                 *str);
-
-int
-str_to_elgamal_flavor (
-    enum ElgamalFlavor *ef, 
-    char         *str);
-
-int
-str2int (
-    int  *output,
-    char *input);
 
 int
 parse_hardcoded_bignum (
@@ -64,5 +49,10 @@ elgamal_exp (
     GamalCiphertext    a,
     BIGNUM     *exponent,
     BIGNUM      *modulus);
+
+int
+permute_elgamal_ciphertexts (
+    GamalCiphertext **ctxts,
+    unsigned long       len);
 
 #endif//_ELGAMAL_UTILS_H_

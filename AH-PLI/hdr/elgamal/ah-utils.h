@@ -29,7 +29,8 @@ baby_step_giant_step(
 
 int
 elgamal_skip_dlog_check_is_one (
-    GamalKeys          keys,
-    GamalCiphertext  cipher);
+    GamalKeys         keys,
+    GamalCiphertext cipher,
+    int           *matches);
 
 #endif//_ELGAMAL_AH_UTILS_H_

@@ -2,7 +2,7 @@
 
 
 int
-mh_elgamal_encrypt (
+elgamal_mh_encrypt (
     GamalCiphertext *cipher,
     GamalPk              pk,
     BIGNUM    *bn_plaintext,
@@ -18,7 +18,18 @@ mh_elgamal_encrypt (
     if (!cipher->c1) { r = 0; return openssl_error("Failed to make new bn");  }
     cipher->c2 = BN_new();
     if (!cipher->c2) { r = 0; return openssl_error("Failed to make new bn"); }
-    r = BN_rand_range_ex(bn_rand_elem, pk.modulus, sec_par, ctx);
+
+    switch (sec_par) {
+    case 2048:
+	r = BN_rand_range_ex(bn_rand_elem, pk.modulus, 224, ctx);
+	break;
+    case 1024:
+	r = BN_rand_range_ex(bn_rand_elem, pk.modulus, 160, ctx);
+	break;
+    default:
+	r = BN_rand_range_ex(bn_rand_elem, pk.modulus, sec_par, ctx);
+	break;
+    }
     if (!r) { return openssl_error("Failed to gen rand elem"); }
 
     // Set c1 = generator^rand_elem
@@ -39,7 +50,7 @@ mh_elgamal_encrypt (
 }
 
 int
-mh_elgamal_decrypt (
+elgamal_mh_decrypt (
     BIGNUM    *bn_plaintext,
     GamalKeys          keys,
     GamalCiphertext  cipher)
@@ -53,7 +64,7 @@ mh_elgamal_decrypt (
     if (!denominator) { r = 0; return openssl_error("Failed to make new bn"); }
 
     // Calculate 1/c1 then 1/c1^sk
-    tmp = BN_mod_inverse(denominator, cipher.c1, keys.pk->modulus, ctx);  
+    tmp = BN_mod_inverse(denominator, cipher.c1, keys.pk->modulus, ctx);
     if (!tmp) { r = 0; return openssl_error("Failed to calc 1/c1"); }
     r = BN_mod_exp(denominator, denominator, keys.sk->secret, keys.pk->modulus, ctx);
     if (!r) { return openssl_error("Failed to calc (1/c1)^sk"); }
@@ -72,7 +83,8 @@ mh_elgamal_decrypt (
 int
 elgamal_skip_decrypt_check_equality (
     GamalKeys         keys,
-    GamalCiphertext cipher)
+    GamalCiphertext cipher,
+    int           *matches)
 {
     int r = 1;
     BIGNUM *denominator;
@@ -85,9 +97,7 @@ elgamal_skip_decrypt_check_equality (
     if (!r) { return openssl_error("Failed to calc c1^sk"); }
 
     if (BN_cmp(denominator, cipher.c2) == 0) {
-	printf("Found a match!\n");
-    } else {
-	printf("Not a match.\n");
+	*matches += 1;
     }
 
     BN_free(denominator);

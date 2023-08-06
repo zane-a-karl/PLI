@@ -1,11 +1,12 @@
-#include "../hdr/protocol-utils.h"
+#include "../../hdr/protocols/utils.h"
 
 
 #define LISTENER_QUEUE_LEN 10
 
 int
-main (int    argc,
-      char **argv)
+main (
+    int    argc,
+    char **argv)
 {
     int r;
     pid_t fork_result;
@@ -41,7 +42,7 @@ main (int    argc,
     }
     hostname        =                                  argv[1];
     r               =        str_to_pli_method(&pmeth, argv[2]);
-    r               =                str2int(&sec_par, argv[3]);
+    r               =             str_to_int(&sec_par, argv[3]);
     filename_server =                                  argv[4];
     filename_client =                                  argv[5];
     r               =    str_to_elgamal_flavor(&eflav, argv[6]);
@@ -68,8 +69,7 @@ main (int    argc,
 	set_socket_and_connect(&sockfd_client, &service_info_client);
 	freeaddrinfo(service_info_client);
 	/* Start the protocol */
-	r = run(sockfd, EG, MH, sec_par, filename);
-	r = run(pli_callback[CLIENT][pmeth][eflav][htype], sockfd, sec_par, filename_client);
+	r = run(callback[CLIENT][pmeth][eflav][htype], sockfd_client, sec_par, filename_client);
 	if (!r) {
 	    perror("Client: Failed during pli execution");
 	    return 1;
@@ -97,7 +97,8 @@ main (int    argc,
 	    /* Child process for server accepted connection */
 	    close(sockfd_server);
 	    /* Start the protocol */
-	    r = run(pli_callback[SERVER][pmeth][eflav][htype], new_fd, sec_par, filename_server);
+	    r = run(callback[SERVER][pmeth][eflav][htype],
+		    new_fd_server, sec_par, filename_server);
 	    if (!r) {
 		perror("Server: Failed during pli execution");
 		return 1;

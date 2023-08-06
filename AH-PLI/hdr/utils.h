@@ -14,10 +14,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>     // memset()
-#include <sys/wait.h>
+#include <sys/wait.h>   // wait()
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <unistd.h>     // close()
+#include <sys/socket.h> // send(), recv()
+#include <unistd.h>     // close(), sleep(), fork()
 
 
 #define SUCCESS 1

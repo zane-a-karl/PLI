@@ -1,52 +1,5 @@
 #include "../../hdr/elgamal/utils.h"
 
-/**
- *
- */
-int
-str_to_homomorphism_type (
-    HomomorphismType *ht, 
-    char            *str)
-{
-    const int max_htype_str_len = 3;
-    if ( 0 == strncmp(str, "AH", max_htype_str_len) ) {
-	*ht = AH;
-    } else if ( 0 == strncmp(str, "MH", max_htype_str_len) ) {
-	*ht = MH;
-    } else {
-	return FAILURE;
-    }
-    return SUCCESS;
-}
-
-/**
- *
- */
-int
-str_to_elgamal_flavor (
-    ElgamalFlavor *ef, 
-    char         *str)
-{
-    const int max_htype_str_len = 5;
-    if ( 0 == strncmp(str, "EG", max_htype_str_len) ) {
-	*ef = EG;
-    } else if ( 0 == strncmp(str, "ECEG", max_htype_str_len) ) {
-	*ef = ECEG;
-    } else {
-	return FAILURE;
-    }
-    return SUCCESS;
-}
-
-void
-str2int (
-    int  *output,
-    char *input)
-{
-    int r = sscanf(input, "%d", output);
-    if (!r) { return FAILURE; }
-    return SUCCESS;
-}
 
 /**
  * Reads from the file 'filename' and
@@ -228,5 +181,44 @@ elgamal_exp (
     if (!r) {
 	return FAILURE;
     }
+    return SUCCESS;
+}
+
+int
+permute_elgamal_ciphertexts (
+    GamalCiphertext **ctxts,
+    unsigned long       len)
+{
+    int r;
+    unsigned long rand;
+    BIGNUM *bn_tmp_c1;
+    BIGNUM *bn_tmp_c2;
+    BIGNUM *bn_len;
+    BIGNUM *bn_rand;
+    BN_CTX *ctx = BN_CTX_new();
+    bn_tmp_c1 = BN_new();
+    bn_tmp_c2 = BN_new();
+    bn_len = BN_new();
+    bn_rand = BN_new();
+
+    r = BN_set_word(bn_len, len);
+    for (int i = 0; i < len; i++) {
+	r = BN_rand_range(bn_rand, bn_len);
+	if (!r) {return openssl_error("Failed bn_rand_range()"); }
+	rand = BN_get_word(bn_rand);
+	BN_copy(bn_tmp_c1, (*ctxts)[i].c1);
+	BN_copy(bn_tmp_c2, (*ctxts)[i].c2);
+
+	BN_copy((*ctxts)[i].c1, (*ctxts)[rand].c1);
+	BN_copy((*ctxts)[i].c2, (*ctxts)[rand].c2);
+
+	BN_copy((*ctxts)[rand].c1, bn_tmp_c1);
+	BN_copy((*ctxts)[rand].c2, bn_tmp_c2);
+    }
+    BN_free(bn_tmp_c1);
+    BN_free(bn_tmp_c2);
+    BN_free(bn_len);
+    BN_free(bn_rand);
+    BN_CTX_free(ctx);
     return SUCCESS;
 }

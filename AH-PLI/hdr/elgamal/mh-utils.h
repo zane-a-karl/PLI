@@ -20,6 +20,7 @@ elgamal_mh_decrypt (
 int
 elgamal_skip_decrypt_check_equality (
     GamalKeys         keys,
-    GamalCiphertext cipher);
+    GamalCiphertext cipher,
+    int           *matches);
 
 #endif//_ELGAMAL_MH_UTILS_H_
