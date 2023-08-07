@@ -12,3 +12,6 @@ Cargo.lock
 
 .DS_Store
 
+# List entry input files
+*/input/server.txt
+*/input/client.txt

@@ -9,6 +9,7 @@ applied to the problem of private list intersection.
 ## Organization
 
 The subdirectory is organized as follows:
+
 	- C source files are located in the `src/` trunk
 	- C header files are located in the `hdr/` trunk
 	- Linkable object files are located in the `obj/` trunk
@@ -20,28 +21,19 @@ The subdirectory is organized as follows:
 ## Compilation and Execution Instructions
 
 To compile and execute on a Mac or other Unix-based system you must follow the following steps:
+
 	- If you are not already in the `AH-PLI/` trunk `cd` into it.
 	- Run `make`
 	- Now you have some options:
+
 	    - Running a client and server in two separate terminals:
-		    - In one terminal run
-```./bin/server <MH or AH> <security param> input/server.txt
-		    - In another terminal run
-```./bin/client <hostname> <MH or AH> <security param> input/client.txt
-		- Running a client and server from the same terminal:
-		    - Run
-```./bin/client-and-server <hostname> <MH or AH> <security param> input/server.txt input/client.txt
 
-To run any of the automatic Elgamal scripts do the following:
-    - Run 
-```chmod +x <name of Elgamal script you'd like to run>
+		    - Optionally run `source ./scripts/helpers.sh` followed by `setup_input_files <# entries>`
+		    - In one terminal run `./bin/server <pli method> <security param> input/server.txt <EG or ECEG> <AH or MH>`
+		    - In another terminal run `./bin/client <hostname> <pli method> <security param> input/client.txt <EG or ECEG> <AH or MH>`
+		- Running a client and server from the same terminal run `./bin/client-and-server <hostname> <pli method> <security param> input/server.txt input/client.txt <EG or ECEG> <AH or MH>`
+
+To run the benchamrking script:
+    - Run `chmod +x <name of Elgamal script you'd like to run>`
     - Note you do not need to run `make` as the automatic script will do so itself
-    - Run
-```./scripts/<name of Elgamal script you'd like to run> 
-
-To run the script named `scripts/setup-input-files.sh`:
-    - Run 
-```chmod +x <name of Elgamal script you'd like to run>
-    - Run
-```scripts/setup-input-files.sh <list length>
-
+    - Run `./scripts/benchmark-single-protocol <pli method> <EG or ECEG> <AH or MH> <security param>`
