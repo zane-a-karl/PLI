@@ -1,6 +1,14 @@
 #include "../../hdr/protocols/utils.h"
 
-
+/** To add a new protocol:
+ * [1] add a src and hdr file following the
+ * naming convention
+ * [2] make sure the header guards are correct
+ * [3] make sure the function names match those
+ * in the lookup table below
+ * [4] make sure the include statements are
+ * correct
+ */
 // Create a lookup table for combinations
 PliProtocol callback[NUM_PARTY_TYPES][NUM_PLI_METHODS][NUM_ELGAMAL_FLAVORS][NUM_HOMOMORPHISM_TYPES]
 =
@@ -29,7 +37,7 @@ PliProtocol callback[NUM_PARTY_TYPES][NUM_PLI_METHODS][NUM_ELGAMAL_FLAVORS][NUM_
 	{//pmeth = 2 = tPLI
 	    {//eflav = 0 = EG
 		NULL,
-		NULL,
+		client_run_t_pli_elgamal_mh,//htype = 1 = MH
 	    },
 	    {//eflav = 1 = ECEG
 		NULL,
@@ -91,7 +99,7 @@ PliProtocol callback[NUM_PARTY_TYPES][NUM_PLI_METHODS][NUM_ELGAMAL_FLAVORS][NUM_
 	{//pmeth = 2 = tPLI
 	    {//eflav = 0 = EG
 		NULL,
-		NULL,
+		server_run_pli_elgamal_mh,//htype = 1 = MH
 	    },
 	    {//eflav = 1 = ECEG
 		NULL,

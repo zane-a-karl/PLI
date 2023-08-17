@@ -58,7 +58,7 @@ parse_hardcoded_bignum (
  * @return SUCCESS/FAILURE
  */
 int
-generate_elgamal_keys (
+elgamal_generate_keys (
     GamalKeys *keys,
     int     sec_par)
 {
@@ -185,7 +185,7 @@ elgamal_exp (
 }
 
 int
-permute_elgamal_ciphertexts (
+elgamal_permute_ciphertexts (
     GamalCiphertext **ctxts,
     unsigned long       len)
 {
@@ -220,5 +220,83 @@ permute_elgamal_ciphertexts (
     BN_free(bn_len);
     BN_free(bn_rand);
     BN_CTX_free(ctx);
+    return SUCCESS;
+}
+
+int
+elgamal_send_pk (
+    int        sockfd,
+    GamalPk       *pk,
+    char *conf_prefix)
+{
+    int r;
+    /* printf("%s\n", conf_prefix); */
+    r = send_msg(sockfd, pk->modulus, "\t- modulus   =", Bignum);
+    if (!r) { return general_error("Failed to send modulus"); }
+    r = send_msg(sockfd, pk->generator, "\t- generator =", Bignum);
+    if (!r) { return general_error("Failed to send generator"); }
+    r = send_msg(sockfd, pk->mul_mask, "\t- mul_mask  =", Bignum);
+    if (!r) { return general_error("Failed to send mul_mask"); }
+    return SUCCESS;
+}
+
+int
+elgamal_send_ciphertext (
+    int         sockfd,
+    GamalCiphertext *c,
+    char  *conf_prefix)
+{
+    int r;
+    /* printf("%s\n", conf_prefix); */
+    r = send_msg(sockfd, c->c1, "\t- c1 = ", Bignum);
+    if (!r) { return general_error("Failed to send ciphertext.c1"); }
+    r = send_msg(sockfd, c->c2, "\t- c2 = ", Bignum);
+    if (!r) { return general_error("Failed to send ciphertext.c2"); }
+    return SUCCESS;
+}
+
+int
+elgamal_recv_pk (
+    int        sockfd,
+    GamalPk       *pk,
+    char *conf_prefix)
+{
+    int r;
+    pk->modulus = BN_new();
+    if (!pk->modulus) {r = 0; return openssl_error("Failed to alloc modulus");}
+    pk->generator = BN_new();
+    if (!pk->generator) {r = 0; return openssl_error("Failed to alloc generator");}
+    pk->mul_mask = BN_new();
+    if (!pk->mul_mask) {r = 0; return openssl_error("Failed to alloc mul_mask");}
+
+    /* printf("%s\n", conf_prefix); */
+    r = recv_msg(sockfd, &pk->modulus, "\t- modulus   = ", Bignum);
+    if (!r) { return general_error("Failed to recv modulus"); }
+    r = recv_msg(sockfd, &pk->generator, "\t- generator = ", Bignum);
+    if (!r) { return general_error("Failed to recv generator"); }
+    r = recv_msg(sockfd, &pk->mul_mask, "\t- mul_mask  = ", Bignum);
+    if (!r) { return general_error("Failed to recv mul_mask"); }
+
+    return SUCCESS;
+}
+
+int
+elgamal_recv_ciphertext (
+    int         sockfd,
+    GamalCiphertext *c,
+    char  *conf_prefix)
+{
+    int r;
+    c->c1 = BN_new();
+    if (!c->c1) {r = 0; return openssl_error("Failed to alloc ciphertext c1");}
+    c->c2 = BN_new();
+    if (!c->c2) {r = 0; return openssl_error("Failed to alloc ciphertext c2"); }
+
+    /* printf("%s\n", conf_prefix); */
+    r = recv_msg(sockfd, &c->c1, "\t- c1 = ", Bignum);
+    if (!r) { return general_error("Failed to recv ciphertext c1"); }
+    r = recv_msg(sockfd, &c->c2, "\t- c2 = ", Bignum);
+    if (!r) { return general_error("Failed to recv ciphertext c2"); }
+
     return SUCCESS;
 }

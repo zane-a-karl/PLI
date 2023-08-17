@@ -1,4 +1,4 @@
-#include "../../hdr/protocols/PLI-ecelgamal-ah.h"
+#include "../../hdr/protocols/tPLI-elgamal-mh.h"
 
 
 extern uint64_t total_bytes;
@@ -8,7 +8,7 @@ static FILE *logfs;
 static char *logfile;
 
 int
-server_run_pli_ecelgamal_ah (
+server_run_t_pli_elgamal_mh (
     int                  new_fd,
     int                 sec_par,
     char              *filename)
@@ -16,13 +16,13 @@ server_run_pli_ecelgamal_ah (
     int r;
     int num_entries = 0;
     int matches = 0;
-    EcGamalKeys server_keys;
-    EcGamalCiphertext *server_cipher;
-    EcGamalCiphertext *client_cipher;
+    GamalKeys server_keys;
+    GamalCiphertext *server_cipher;
+    GamalCiphertext *client_cipher;
     BIGNUM **bn_plain;
     BN_CTX *ctx = BN_CTX_new();
 
-    r = ecelgamal_generate_keys(&server_keys, sec_par);
+    r = elgamal_generate_keys(&server_keys, sec_par);
     if (!r) { return openssl_error("Failed to gen EG keys"); }
 
     /* Start here to exclude key generation */
@@ -30,7 +30,6 @@ server_run_pli_ecelgamal_ah (
 
     r = parse_file_for_num_entries(&num_entries, filename);
     if (!r) { return general_error("Failed to parse file for number of list entries"); }
-
     bn_plain = calloc(num_entries, sizeof(*bn_plain));
     for (int i=0; i < num_entries; i++) {
 	bn_plain[i] = BN_new();
@@ -39,46 +38,50 @@ server_run_pli_ecelgamal_ah (
     r = parse_file_for_list_entries(bn_plain, num_entries, filename);
     if (!r) { return general_error("Failed to parse file for list entries"); }
 
-    r = ecelgamal_send_pk(new_fd, server_keys.pk, "Server sent:");
+    r = elgamal_send_pk(new_fd, server_keys.pk, "Server sent:");
     if (!r) { return general_error("Failed to send server pk"); }
 
     server_cipher = calloc(num_entries, sizeof(*server_cipher));
     for (int i=0; i < num_entries; i++) {
-	r = ecelgamal_ah_encrypt(&server_cipher[i], server_keys.pk, bn_plain[i], sec_par);
+	r = elgamal_mh_encrypt(&server_cipher[i], *server_keys.pk, bn_plain[i], sec_par);
 	if (!r) { return general_error("Failed to encrypt server plaintext"); }
-	r = ecelgamal_send_ciphertext(new_fd, &server_cipher[i], server_keys.pk, "Server sent:");
+	r = elgamal_send_ciphertext(new_fd, &server_cipher[i], "Server sent:");
 	if (!r) { return general_error("Failed to send server ciphertext"); }
     }
 
     client_cipher = calloc(num_entries, sizeof(*client_cipher));
-    for (int i=0; i<num_entries; i++) {
+    for (int i = 0; i < num_entries; i++) {
 	/* Fn alloc's client_cipher[i].c1/c2 */
-	r = ecelgamal_recv_ciphertext(new_fd, &client_cipher[i], server_keys.pk, "Server recv:");
+	r = elgamal_recv_ciphertext(new_fd, &client_cipher[i], "Server recv:");
 	if (!r) { return general_error("Failed to recv client ciphertext"); }
     }
 
-    for (int i=0; i<num_entries; i++) {
-	r = ecelgamal_skip_dlog_check_is_at_infinity(server_keys, client_cipher[i], &matches);
+    /* Now do the following */
+    /* 1. recv the AES encrytions */
+    /* 1.5 recv hash(s) */
+    /* 2. decrypt the AES encryptions using hash(client_cipher[i].c2) to get s'_i  */
+    /* 3. reconstruct SSS's with the s'_i's to get s' */
+    /* 4. hash s' and compare with the hash(s) you received */
+
+    for (int i = 0; i < num_entries; i++) {
+	r = elgamal_skip_decrypt_check_equality(server_keys, client_cipher[i], &matches);
 	if (!r) { return general_error("Failed skip decrypt check"); }
     }
     printf("# Matches = %*i\n", -3, matches);
     printf("# Misses  = %*i\n", -3, num_entries - matches);
     COLLECT_LOG_ENTRY(sec_par, num_entries, total_bytes);
 
-    EC_GROUP_free(server_keys.pk->group);
-    BN_free(server_keys.pk->order);
-    EC_POINT_free(server_keys.pk->generator);
-    EC_POINT_free(server_keys.pk->point);
-    BN_free(server_keys.pk->p);
-    BN_free(server_keys.pk->a);
-    BN_free(server_keys.pk->b);
+    BN_free(server_keys.pk->modulus);
+    BN_free(server_keys.pk->generator);
+    BN_free(server_keys.pk->mul_mask);
     free(server_keys.pk);
-    BN_free(server_keys.sk);
+    BN_free(server_keys.sk->secret);
+    free(server_keys.sk);
     for (int i = 0; i < num_entries; i++) {
-	EC_POINT_free(client_cipher[i].c1);
-	EC_POINT_free(client_cipher[i].c2);
-	EC_POINT_free(server_cipher[i].c1);
-	EC_POINT_free(server_cipher[i].c2);
+	BN_free(client_cipher[i].c1);
+	BN_free(client_cipher[i].c2);
+	BN_free(server_cipher[i].c1);
+	BN_free(server_cipher[i].c2);
 	BN_free(bn_plain[i]);
     }
     free(bn_plain);
@@ -92,16 +95,16 @@ server_run_pli_ecelgamal_ah (
 }
 
 int
-client_run_pli_ecelgamal_ah (
+client_run_t_pli_elgamal_mh (
     int                  sockfd,
     int                 sec_par,
     char *             filename)
 {
     int r;
     int num_entries = 0;
-    EcGamalPk server_pk;
-    EcGamalCiphertext *server_cipher;
-    EcGamalCiphertext *client_cipher;
+    GamalPk server_pk;
+    GamalCiphertext *server_cipher;
+    GamalCiphertext *client_cipher;
     BIGNUM **bn_plain;
     BN_CTX *ctx = BN_CTX_new();
 
@@ -109,18 +112,18 @@ client_run_pli_ecelgamal_ah (
     if (!r) { return general_error("Failed to parse file for number of list entries"); }
 
     /* Fn alloc's server_pk fields */
-    r = ecelgamal_recv_pk(sockfd, &server_pk, "Client recv:");
+    r = elgamal_recv_pk(sockfd, &server_pk, "Client recv:");
     if (!r) { return general_error("Failed to recv server pk"); }
 
     server_cipher = calloc(num_entries, sizeof(*server_cipher));
     for (int i = 0; i < num_entries; i++) {
 	/* Fn alloc's server_cipher[i].c1/c2 */
-	r = ecelgamal_recv_ciphertext(sockfd, &server_cipher[i], &server_pk, "Client recv:");
+	r = elgamal_recv_ciphertext(sockfd, &server_cipher[i], "Client recv:");
 	if (!r) { return general_error("Failed to recv server ciphertext"); }
     }
 
     bn_plain = calloc(num_entries, sizeof(*bn_plain));
-    for (int i = 0; i < num_entries; i++) {
+    for (int i=0; i < num_entries; i++) {
 	bn_plain[i] = BN_new();
 	if (!bn_plain[i]) {r = 0; return openssl_error("Failed to alloc bn_plain"); }
     }
@@ -129,55 +132,67 @@ client_run_pli_ecelgamal_ah (
 
     BIGNUM *bn_inv_plain[num_entries];
     for (int i = 0; i < num_entries; i++) {
-	bn_inv_plain[i] = BN_dup(bn_plain[i]);
-	BN_set_negative(bn_inv_plain[i], 1);
-	if (!bn_inv_plain[i]) { openssl_error("Failed to negate bn_plain"); }
+	bn_inv_plain[i] = BN_mod_inverse(NULL, bn_plain[i], server_pk.modulus, ctx);
+	if (!bn_inv_plain[i]) { r = 0; return openssl_error("Failed to invert bn_plain"); }
     }
     client_cipher = calloc(num_entries, sizeof(*client_cipher));
     for (int i = 0; i < num_entries; i++) {
-	r = ecelgamal_ah_encrypt(&client_cipher[i], &server_pk, bn_inv_plain[i], sec_par);
+	r = elgamal_mh_encrypt(&client_cipher[i], server_pk, bn_inv_plain[i], sec_par);
 	if (!r) { return general_error("Error encrypting bn_inv_plain"); }
     }
-    EcGamalCiphertext add_res[num_entries];
+    GamalCiphertext mul_res[num_entries];
     for (int i = 0; i < num_entries; i++) {
-	/* add_res alloc'd within fn */
-	r = ecelgamal_add(&add_res[i], server_cipher[i], client_cipher[i], server_pk);
-	if (!r) { return general_error("Failed to calc server_ciph + client_ciph"); }
+	/* mul_res alloc'd within fn */
+	r = elgamal_mul(&mul_res[i], server_cipher[i], client_cipher[i], server_pk.modulus);
+	if (!r) { return general_error("Failed to calc server_ciph * client_ciph"); }
     }
     BIGNUM *bn_rand_mask[num_entries];
     for (int i = 0; i < num_entries; i++) {
 	bn_rand_mask[i] = BN_new();
-	r = BN_rand_range_ex(bn_rand_mask[i], server_pk.p, sec_par, ctx);
-	if (!r) { return openssl_error("Failed to gen rand_mask"); }
+	switch (sec_par) {
+	case 2048:
+	    r = BN_rand_range_ex(bn_rand_mask[i], server_pk.modulus, 224, ctx);
+	    break;
+	case 1024:
+	    r = BN_rand_range_ex(bn_rand_mask[i], server_pk.modulus, 160, ctx);
+	    break;
+	default:
+	    r = BN_rand_range_ex(bn_rand_mask[i], server_pk.modulus, sec_par, ctx);
+	    break;
+	}
+	if (!r) { return openssl_error("Failed to gen rand_exp"); }
     }
-    EcGamalCiphertext ptmul_res[num_entries];
+    GamalCiphertext exp_res[num_entries];
     for (int i = 0; i < num_entries; i++) {
-	/* ptmul_res alloc'd w/n fn */
-	r = ecelgamal_ptmul(&ptmul_res[i], add_res[i], bn_rand_mask[i], server_pk);
-	if (!r) { return general_error("Failed to point mul the ciphertexts"); }
-	r = ecelgamal_send_ciphertext(sockfd, &ptmul_res[i], &server_pk, "Client sent:");
+	/* exp_res alloc'd w/n fn */
+	r = elgamal_exp(&exp_res[i], mul_res[i], bn_rand_mask[i], server_pk.modulus);
+	if (!r) { return general_error("Failed to calculate cipher^mask"); }
+	r = elgamal_send_ciphertext(sockfd, &exp_res[i], "Client sent:");
 	if (!r) { return general_error("Failed to send exp_res"); }
     }
 
-    EC_GROUP_free(server_pk.group);
-    BN_free(server_pk.order);
-    EC_POINT_free(server_pk.generator);
-    EC_POINT_free(server_pk.point);
-    BN_free(server_pk.p);
-    BN_free(server_pk.a);
-    BN_free(server_pk.b);
+    /* Now do the following */
+    /* 1. generate a random secret value 's' */
+    /* 2. secret share 's' using SSS to generate 'n' shares (s_i) */
+    /* 3. hash (exp_res[i].c2) and store into arr[i] */
+    /* 4. Encrypt (s_i) with AES using arr[i] as key */
+    /* 5. send output of (4) and hash(s) to server */
+
+    BN_free(server_pk.modulus);
+    BN_free(server_pk.generator);
+    BN_free(server_pk.mul_mask);
     for (int i = 0; i < num_entries; i++) {
+	BN_free(server_cipher[i].c1);
+	BN_free(server_cipher[i].c2);
 	BN_free(bn_plain[i]);
 	BN_free(bn_inv_plain[i]);
+	BN_free(client_cipher[i].c1);
+	BN_free(client_cipher[i].c2);
+	BN_free(mul_res[i].c1);
+	BN_free(mul_res[i].c2);
 	BN_free(bn_rand_mask[i]);
-	EC_POINT_free(add_res[i].c1);
-	EC_POINT_free(add_res[i].c2);
-	EC_POINT_free(ptmul_res[i].c1);
-	EC_POINT_free(ptmul_res[i].c2);
-	EC_POINT_free(client_cipher[i].c1);
-	EC_POINT_free(client_cipher[i].c2);
-	EC_POINT_free(server_cipher[i].c1);
-	EC_POINT_free(server_cipher[i].c2);
+	BN_free(exp_res[i].c1);
+	BN_free(exp_res[i].c2);
     }
     free(server_cipher);
     free(bn_plain);

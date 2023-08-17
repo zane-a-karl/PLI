@@ -32,7 +32,7 @@ parse_hardcoded_bignum (
     const char *filename);
 
 int
-generate_elgamal_keys (
+elgamal_generate_keys (
     GamalKeys *keys,
     int     sec_par);
 
@@ -51,8 +51,33 @@ elgamal_exp (
     BIGNUM      *modulus);
 
 int
-permute_elgamal_ciphertexts (
+elgamal_permute_ciphertexts (
     GamalCiphertext **ctxts,
     unsigned long       len);
+
+int
+elgamal_send_pk (
+    int        sockfd,
+    GamalPk       *pk,
+    char *conf_prefix);
+
+int
+elgamal_send_ciphertext (
+    int         sockfd,
+    GamalCiphertext *c,
+    char  *conf_prefix);
+
+
+int
+elgamal_recv_pk (
+    int        sockfd,
+    GamalPk       *pk,
+    char *conf_prefix);
+
+int
+elgamal_recv_ciphertext (
+    int         sockfd,
+    GamalCiphertext *c,
+    char  *conf_prefix);
 
 #endif//_ELGAMAL_UTILS_H_

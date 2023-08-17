@@ -1,4 +1,4 @@
-#include "../../hdr/protocols/PLIca-elgamal-mh.h"
+#include "../../hdr/protocols/PLI-elgamal-mh.h"
 
 
 extern uint64_t total_bytes;
@@ -22,7 +22,7 @@ server_run_pli_ca_elgamal_mh (
     BIGNUM **bn_plain;
     BN_CTX *ctx = BN_CTX_new();
 
-    r = generate_elgamal_keys(&server_keys, sec_par);
+    r = elgamal_generate_keys(&server_keys, sec_par);
     if (!r) { return openssl_error("Failed to gen EG keys"); }
 
     /* Start here to exclude key generation */
@@ -30,7 +30,6 @@ server_run_pli_ca_elgamal_mh (
 
     r = parse_file_for_num_entries(&num_entries, filename);
     if (!r) { return general_error("Failed to parse file for number of list entries"); }
-
     bn_plain = calloc(num_entries, sizeof(*bn_plain));
     for (int i=0; i < num_entries; i++) {
 	bn_plain[i] = BN_new();
@@ -39,39 +38,25 @@ server_run_pli_ca_elgamal_mh (
     r = parse_file_for_list_entries(bn_plain, num_entries, filename);
     if (!r) { return general_error("Failed to parse file for list entries"); }
 
-    r = send_msg(new_fd, server_keys.pk->modulus, "server: sent server modulus   =", Bignum);
-    if (!r) { return general_error("Failed to send modulus"); }
-    r = send_msg(new_fd, server_keys.pk->generator, "server: sent server generator =", Bignum);
-    if (!r) { return general_error("Failed to send generator"); }
-    r = send_msg(new_fd, server_keys.pk->mul_mask, "server: sent server mul_mask  =", Bignum);
-    if (!r) { return general_error("Failed to send mul_mask"); }
+    r = elgamal_send_pk(new_fd, server_keys.pk, "Server sent:");
+    if (!r) { return general_error("Failed to send server pk"); }
 
     server_cipher = calloc(num_entries, sizeof(*server_cipher));
     for (int i=0; i < num_entries; i++) {
 	r = elgamal_mh_encrypt(&server_cipher[i], *server_keys.pk, bn_plain[i], sec_par);
 	if (!r) { return general_error("Failed to encrypt server plaintext"); }
-
-	r = send_msg(new_fd, server_cipher[i].c1, "server: sent server_cipher.c1", Bignum);
-	if (!r) { return general_error("Failed to send server_cipher.c1"); }
-	r = send_msg(new_fd, server_cipher[i].c2, "server: sent server_cipher.c2", Bignum);
-	if (!r) { return general_error("Failed to send server_cipher.c2"); }
+	r = elgamal_send_ciphertext(new_fd, &server_cipher[i], "Server sent:");
+	if (!r) { return general_error("Failed to send server ciphertext"); }
     }
 
     client_cipher = calloc(num_entries, sizeof(*client_cipher));
-    for (int i=0; i<num_entries; i++) {
-	client_cipher[i].c1 = BN_new();
-	if (!client_cipher[i].c1) {r = 0; return openssl_error("Failed to alloc client_cipher.c1");}
-	r = recv_msg(new_fd, &client_cipher[i].c1, "server: recv client_cipher.c1", Bignum);
-	if (!r) { return general_error("Failed to recv client_cipher.c1"); }
-
-	client_cipher[i].c2 = BN_new();
-	if (!client_cipher[i].c2) {r = 0; return openssl_error("Failed to alloc client_cipher.c2"); }
-	r = recv_msg(new_fd, &client_cipher[i].c2, "server: recv client_cipher.c2", Bignum);
-	if (!r) { return general_error("Failed to recv client_cipher.c2"); }
+    for (int i = 0; i < num_entries; i++) {
+	/* Fn alloc's client_cipher[i].c1/c2 */
+	r = elgamal_recv_ciphertext(new_fd, &client_cipher[i], "Server recv:");
+	if (!r) { return general_error("Failed to recv client ciphertext"); }
     }
 
-    /* Skip decryption and just check c2 == c1^sk */
-    for (int i=0; i<num_entries; i++) {
+    for (int i = 0; i < num_entries; i++) {
 	r = elgamal_skip_decrypt_check_equality(server_keys, client_cipher[i], &matches);
 	if (!r) { return general_error("Failed skip decrypt check"); }
     }
@@ -119,27 +104,15 @@ client_run_pli_ca_elgamal_mh (
     r = parse_file_for_num_entries(&num_entries, filename);
     if (!r) { return general_error("Failed to parse file for number of list entries"); }
 
-    server_pk.modulus = BN_new();
-    r = recv_msg(sockfd, &server_pk.modulus, "client: received server modulus   = ", Bignum);
-    if (!r) { return general_error("Failed to recv server modulus"); }
-
-    server_pk.generator = BN_new();
-    r = recv_msg(sockfd, &server_pk.generator, "client: received server generator   = ", Bignum);
-    if (!r) { return general_error("Failed to recv server generator"); }
-
-    server_pk.mul_mask = BN_new();
-    r = recv_msg(sockfd, &server_pk.mul_mask, "client: received server mul_mask   = ", Bignum);
-    if (!r) { return general_error("Failed to recv server mul_mask"); }
+    /* Fn alloc's server_pk fields */
+    r = elgamal_recv_pk(sockfd, &server_pk, "Client recv:");
+    if (!r) { return general_error("Failed to recv server pk"); }
 
     server_cipher = calloc(num_entries, sizeof(*server_cipher));
     for (int i = 0; i < num_entries; i++) {
-	server_cipher[i].c1 = BN_new();
-	r = recv_msg(sockfd, &server_cipher[i].c1, "client: received server_cipher.c1   = ", Bignum);
-	if (!r) { return general_error("Failed to recv server_cipher.c1"); }
-
-	server_cipher[i].c2 = BN_new();
-	r = recv_msg(sockfd, &server_cipher[i].c2, "client: received server_cipher.c2   = ", Bignum);
-	if (!r) { return general_error("Failed to recv server_cipher.c2"); }
+	/* Fn alloc's server_cipher[i].c1/c2 */
+	r = elgamal_recv_ciphertext(sockfd, &server_cipher[i], "Client recv:");
+	if (!r) { return general_error("Failed to recv server ciphertext"); }
     }
 
     bn_plain = calloc(num_entries, sizeof(*bn_plain));
@@ -155,20 +128,17 @@ client_run_pli_ca_elgamal_mh (
 	bn_inv_plain[i] = BN_mod_inverse(NULL, bn_plain[i], server_pk.modulus, ctx);
 	if (!bn_inv_plain[i]) { r = 0; return openssl_error("Failed to invert bn_plain"); }
     }
-
     client_cipher = calloc(num_entries, sizeof(*client_cipher));
     for (int i = 0; i < num_entries; i++) {
 	r = elgamal_mh_encrypt(&client_cipher[i], server_pk, bn_inv_plain[i], sec_par);
 	if (!r) { return general_error("Error encrypting bn_inv_plain"); }
     }
-
     GamalCiphertext mul_res[num_entries];
     for (int i = 0; i < num_entries; i++) {
 	/* mul_res alloc'd within fn */
 	r = elgamal_mul(&mul_res[i], server_cipher[i], client_cipher[i], server_pk.modulus);
 	if (!r) { return general_error("Failed to calc server_ciph * client_ciph"); }
     }
-
     BIGNUM *bn_rand_mask[num_entries];
     for (int i = 0; i < num_entries; i++) {
 	bn_rand_mask[i] = BN_new();
@@ -185,22 +155,17 @@ client_run_pli_ca_elgamal_mh (
 	}
 	if (!r) { return openssl_error("Failed to gen rand_exp"); }
     }
-
     GamalCiphertext *exp_res = calloc(num_entries, sizeof(*exp_res));
     for (int i = 0; i < num_entries; i++) {
 	/* exp_res alloc'd w/n fn */
 	r = elgamal_exp(&exp_res[i], mul_res[i], bn_rand_mask[i], server_pk.modulus);
 	if (!r) { return general_error("Failed to calculate cipher^mask"); }
     }
-
-    r = permute_elgamal_ciphertexts(&exp_res, (unsigned long)num_entries);
+    r = elgamal_permute_ciphertexts(&exp_res, (unsigned long)num_entries);
     if (!r) { return general_error("Failed to permute ciphertext entries"); }
-
     for (int i = 0; i < num_entries; i++) {
-	r = send_msg(sockfd, exp_res[i].c1, "client: sent exp_res.c1", Bignum);
-	if (!r) { return general_error("Failed to send exp_res.c1"); }
-	r = send_msg(sockfd, exp_res[i].c2, "client: sent exp_res.c2", Bignum);
-	if (!r) { return general_error("Failed to send exp_res.c2"); }
+	r = elgamal_send_ciphertext(sockfd, &exp_res[i], "Client sent:");
+	if (!r) { return general_error("Failed to send exp_res"); }
     }
 
     BN_free(server_pk.modulus);

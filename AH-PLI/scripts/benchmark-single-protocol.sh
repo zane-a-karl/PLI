@@ -20,6 +20,7 @@ fi
 # Global variables
 client_file="input/client.txt"
 server_file="input/server.txt"
+tmp_file="input/tmp.txt"
 start_size=10
 end_size=100
 sample_size=10
@@ -37,21 +38,29 @@ logfile="logs/$pmeth-$eflav-$htype-$secpar.csv"
 # echo "$logfile"
 # exit
 
+make --quiet clean;
+make --quiet;
+
 echo "START AVERAGE RUNTIME/BANDWIDTH TEST";
 echo "sec par, # entries, total bytes, total_time" > "$logfile";
 for ((i=$start_size; i<=$end_size; i+=10))
 do
-    setup_input_files $i
+    ./scripts/setup-input-files.sh $i $secpar
+    # Remove '\'s
+    awk '{ gsub(/\\/, "") } 1' $client_file > $tmp_file && mv $tmp_file $client_file
+    awk '{ gsub(/\\/, "") } 1' $server_file > $tmp_file && mv $tmp_file $server_file
+    # Remove '\n's
+    awk '{ printf "%s", $0 } END { print "" }' $client_file > $tmp_file && mv $tmp_file $client_file
+    awk '{ printf "%s", $0 } END { print "" }' $server_file > $tmp_file && mv $tmp_file $server_file
+
     for ((j=0; j<$sample_size; j++))
     do
-	make --quiet clean;
-	make --quiet;
 	printf "%s%d\n" "Begin: $pmeth $eflav $htype Protocol #" "$j"
 	./bin/main/client-and-server "localhost" "$pmeth" "$secpar" "$server_file" "$client_file" "$eflav" "$htype"
 	#	$pids=$(ps aux | grep "elgamal" | grep -v "grep" | awk '{print $2}')
 	wait
 	printf "%s%d\n\n" "Finish:  $pmeth $eflav $htype Protocol #" "$j"
     done
-    # echo "-------------------------------------------" >> "$logfile";
+    echo "-------------------------------------------" >> "$logfile";
 done
 echo "END AVERAGE RUNTIME/BANDWIDTH TEST";

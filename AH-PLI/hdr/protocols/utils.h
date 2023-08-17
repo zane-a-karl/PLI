@@ -12,6 +12,10 @@
 #include "PLIca-elgamal-mh.h"
 #include "PLIca-ecelgamal-ah.h"
 
+/* #include "tPLI-elgamal-ah.h" */
+#include "tPLI-elgamal-mh.h"
+/* #include "tPLI-ecelgamal-ah.h" */
+
 
 enum PliMethod {
     PLI,			/* 0 */
@@ -66,6 +70,7 @@ int
 str_to_elgamal_flavor (
     enum ElgamalFlavor *ef, 
     char              *str);
+
 int
 str_to_int (
     int *output,

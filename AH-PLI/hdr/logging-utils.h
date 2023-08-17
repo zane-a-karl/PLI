@@ -35,7 +35,7 @@ typedef struct LogItems {
     sec = (t2.tv_sec - t1.tv_sec) + (t2.tv_nsec - t1.tv_nsec) / 1000000000.0; \
     fprintf(logfs,"Line:%5d, Time = %f\n",__LINE__,sec);
 
-#define COLLECT_LOG_ENTRY(sec_par, n_entries, bytes)			\
+#define COLLECT_LOG_ENTRY(secpar, n_entries, bytes)			\
     printf("Ending the clock: \n");					\
     clock_gettime(CLOCK_MONOTONIC, &t2);				\
     sec = (t2.tv_sec - t1.tv_sec) + (t2.tv_nsec - t1.tv_nsec) / 1000000000.0; \

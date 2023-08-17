@@ -1,6 +1,13 @@
 #!/bin/bash
 
-#NOTE: run script with list entries length as input
+# Check sufficient arguments
+if [[ $# -ne 2 ]]; then
+    echo "Error: Insufficient arguments provided";
+    echo "Usage $0 <list length> <security parameter>";
+    exit 1;
+fi
+len=$1
+secpar="2^$2"
 
 # Global variables
 client_file="input/client.txt"
@@ -15,17 +22,22 @@ fi
 echo "Create client and server input files"
 echo -n "[" > "$client_file";
 echo -n "[" > "$server_file";
-for ((k=1; k<$1; k++))
+val=0
+for ((k=0; k<$(($len-1)); k++))
 do
-    if [[ $k -gt $(($1/2)) ]];
+    if [[ $k -gt $(($len/2 - 1)) ]];
     then
-	echo -n "$k, " >> "$client_file";
-	rand_val=$((RANDOM%$1 + $1 + 1))
+	val=$(echo "$k + $secpar" | bc)
+	echo -n "$val, " >> "$client_file";
+	rand_val=$(echo "$((RANDOM%$len + $len + 1)) + $secpar" | bc)
 	echo -n "$rand_val, " >> "$server_file";
     else
-	echo -n "$k, " >> "$client_file";
-	echo -n "$k, " >> "$server_file";
+	val=$(echo "$k + $secpar" | bc)
+	echo -n "$val, " >> "$client_file";
+	echo -n "$val, " >> "$server_file";
     fi
 done
-echo "$1]" >> "$client_file";
-echo "$((RANDOM%$1 + $1 + 1))]" >> "$server_file";
+val=$(echo "$len - 1 + $secpar" | bc)
+rand_val=$(echo "$((RANDOM%$len + $len + 1)) + $secpar" | bc)
+echo "$val]" >> "$client_file";
+echo "$rand_val]" >> "$server_file";

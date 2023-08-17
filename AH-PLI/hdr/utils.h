@@ -24,7 +24,7 @@
 #define FAILURE 0
 #define FIXED_LEN 10
 #define MAX_MSG_LEN 2048
-#define MAX_FILE_BYTES 256
+#define MAX_FILE_BYTES 8192
 
 enum PartyType {
     CLIENT,

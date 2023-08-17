@@ -35,7 +35,7 @@ set_ec_group (
     int   sec_par);
 
 int
-generate_ecelgamal_keys (
+ecelgamal_generate_keys (
     EcGamalKeys *keys,
     int       sec_par);
 
@@ -54,9 +54,35 @@ ecelgamal_ptmul (
     EcGamalPk           pk);
 
 int
-permute_ecelgamal_ciphertexts (
+ecelgamal_permute_ciphertexts (
     EcGamalCiphertext **ctxts,
     unsigned long         len,
     EC_GROUP           *group);
+
+int
+ecelgamal_send_pk (
+    int        sockfd,
+    EcGamalPk     *pk,
+    char *conf_prefix);
+
+int
+ecelgamal_send_ciphertext (
+    int           sockfd,
+    EcGamalCiphertext *c,
+    EcGamalPk        *pk,
+    char    *conf_prefix);
+
+int
+ecelgamal_recv_pk (
+    int        sockfd,
+    EcGamalPk     *pk,
+    char *conf_prefix);
+
+int
+ecelgamal_recv_ciphertext (
+    int           sockfd,
+    EcGamalCiphertext *c,
+    EcGamalPk        *pk,
+    char    *conf_prefix);
 
 #endif//_ECELGAMAL_UTILS_H_
