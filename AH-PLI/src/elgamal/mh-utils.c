@@ -19,17 +19,7 @@ elgamal_mh_encrypt (
     cipher->c2 = BN_new();
     if (!cipher->c2) { r = 0; return openssl_error("Failed to make new bn"); }
 
-    switch (sec_par) {
-    case 2048:
-	r = BN_rand_range_ex(bn_rand_elem, pk.modulus, 224, ctx);
-	break;
-    case 1024:
-	r = BN_rand_range_ex(bn_rand_elem, pk.modulus, 160, ctx);
-	break;
-    default:
-	r = BN_rand_range_ex(bn_rand_elem, pk.modulus, sec_par, ctx);
-	break;
-    }
+    r = generate_ec_equivalent_random_number(&bn_rand_elem, pk.modulus, sec_par);
     if (!r) { return openssl_error("Failed to gen rand elem"); }
 
     // Set c1 = generator^rand_elem

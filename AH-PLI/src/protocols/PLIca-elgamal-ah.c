@@ -9,9 +9,8 @@ static char *logfile;
 
 int
 server_run_pli_ca_elgamal_ah (
-    int                  new_fd,
-    int                 sec_par,
-    char              *filename)
+    int   new_fd,
+    InputArgs ia)
 {
     int r;
     int num_entries = 0;
@@ -22,13 +21,13 @@ server_run_pli_ca_elgamal_ah (
     BIGNUM **bn_plain;
     BN_CTX *ctx = BN_CTX_new();
 
-    r = elgamal_generate_keys(&server_keys, sec_par);
+    r = elgamal_generate_keys(&server_keys, ia.secpar);
     if (!r) { return openssl_error("Failed to gen EG keys"); }
 
     /* Start here to exclude key generation */
-    TSTART(sec_par);
+    TSTART(ia.secpar);
 
-    r = parse_file_for_num_entries(&num_entries, filename);
+    r = parse_file_for_num_entries(&num_entries, ia.server_filename);
     if (!r) { return general_error("Failed to parse file for number of list entries"); }
 
     bn_plain = calloc(num_entries, sizeof(*bn_plain));
@@ -36,7 +35,7 @@ server_run_pli_ca_elgamal_ah (
 	bn_plain[i] = BN_new();
 	if (!bn_plain[i]) {r = 0; return openssl_error("Failed to alloc bn_plain"); }
     }
-    r = parse_file_for_list_entries(bn_plain, num_entries, filename);
+    r = parse_file_for_list_entries(bn_plain, num_entries, ia.server_filename);
     if (!r) { return general_error("Failed to parse file for list entries"); }
 
     r = elgamal_send_pk(new_fd, server_keys.pk, "Server sent:");
@@ -44,7 +43,7 @@ server_run_pli_ca_elgamal_ah (
 
     server_cipher = calloc(num_entries, sizeof(*server_cipher));
     for (int i=0; i < num_entries; i++) {
-	r = elgamal_ah_encrypt(&server_cipher[i], *server_keys.pk, bn_plain[i], sec_par);
+	r = elgamal_ah_encrypt(&server_cipher[i], *server_keys.pk, bn_plain[i], ia.secpar);
 	if (!r) { return general_error("Failed to encrypt server plaintext"); }
 	r = elgamal_send_ciphertext(new_fd, &server_cipher[i], "Server sent:");
 	if (!r) { return general_error("Failed to send server ciphertext"); }
@@ -63,7 +62,7 @@ server_run_pli_ca_elgamal_ah (
     }
     printf("# Matches = %*i\n", -3, matches);
     printf("# Misses  = %*i\n", -3, num_entries - matches);
-    COLLECT_LOG_ENTRY(sec_par, num_entries, total_bytes);
+    COLLECT_LOG_ENTRY(ia.secpar, num_entries, total_bytes);
 
     BN_free(server_keys.pk->modulus);
     BN_free(server_keys.pk->generator);
@@ -90,9 +89,8 @@ server_run_pli_ca_elgamal_ah (
 
 int
 client_run_pli_ca_elgamal_ah (
-    int                  sockfd,
-    int                 sec_par,
-    char              *filename)
+    int   sockfd,
+    InputArgs ia)
 {
     int r;
     int num_entries = 0;
@@ -102,7 +100,7 @@ client_run_pli_ca_elgamal_ah (
     BIGNUM **bn_plain;
     BN_CTX *ctx = BN_CTX_new();
 
-    r = parse_file_for_num_entries(&num_entries, filename);
+    r = parse_file_for_num_entries(&num_entries, ia.client_filename);
     if (!r) { return general_error("Failed to parse file for number of list entries"); }
 
     /* Fn alloc's server_pk fields */
@@ -121,7 +119,7 @@ client_run_pli_ca_elgamal_ah (
 	bn_plain[i] = BN_new();
 	if (!bn_plain[i]) {r = 0; return openssl_error("Failed to alloc bn_plain"); }
     }
-    r = parse_file_for_list_entries(bn_plain, num_entries, filename);
+    r = parse_file_for_list_entries(bn_plain, num_entries, ia.client_filename);
     if (!r) { return general_error("Failed to parse file for list entries"); }
 
     BIGNUM *bn_inv_plain[num_entries];
@@ -132,7 +130,7 @@ client_run_pli_ca_elgamal_ah (
     }
     client_cipher = calloc(num_entries, sizeof(*client_cipher));
     for (int i = 0; i < num_entries; i++) {
-	r = elgamal_ah_encrypt(&client_cipher[i], server_pk, bn_inv_plain[i], sec_par);
+	r = elgamal_ah_encrypt(&client_cipher[i], server_pk, bn_inv_plain[i], ia.secpar);
 	if (!r) { return general_error("Error encrypting bn_inv_plain"); }
     }
     GamalCiphertext mul_res[num_entries];
@@ -144,17 +142,7 @@ client_run_pli_ca_elgamal_ah (
     BIGNUM *bn_rand_mask[num_entries];
     for (int i = 0; i < num_entries; i++) {
 	bn_rand_mask[i] = BN_new();
-	switch (sec_par) {
-	case 2048:
-	    r = BN_rand_range_ex(bn_rand_mask[i], server_pk.modulus, 224, ctx);
-	    break;
-	case 1024:
-	    r = BN_rand_range_ex(bn_rand_mask[i], server_pk.modulus, 160, ctx);
-	    break;
-	default:
-	    r = BN_rand_range_ex(bn_rand_mask[i], server_pk.modulus, sec_par, ctx);
-	    break;
-	}
+	r = generate_ec_equivalent_random_number(&bn_rand_mask[i], server_pk.modulus, ia.secpar);
 	if (!r) { return openssl_error("Failed to gen rand_exp"); }
     }
     GamalCiphertext *exp_res = calloc(num_entries, sizeof(*exp_res));

@@ -16,7 +16,7 @@ typedef struct LogItems {
 #define TSTART(sp)							\
     LogItems *l = parse_src_filename(__FILE__);				\
     logfile = calloc(32, sizeof(char));					\
-    snprintf(logfile, 32, "%s%s-%s-%s-%d.%s", "logs/", l->pmeth, l->eflav, l->htype, sp, "csv"); \
+    snprintf(logfile, 32, "%s%s-%s-%s-%lu.%s", "logs/", l->pmeth, l->eflav, l->htype, sp, "csv"); \
     free(l->pmeth);							\
     free(l->eflav);							\
     free(l->htype);							\
@@ -39,7 +39,7 @@ typedef struct LogItems {
     printf("Ending the clock: \n");					\
     clock_gettime(CLOCK_MONOTONIC, &t2);				\
     sec = (t2.tv_sec - t1.tv_sec) + (t2.tv_nsec - t1.tv_nsec) / 1000000000.0; \
-    fprintf(logfs, "%d, ", sec_par);					\
+    fprintf(logfs, "%lu, ", secpar);					\
     fprintf(logfs, "%d, ", n_entries);					\
     fprintf(logfs, "%" PRIu64 ", ", bytes);				\
     fprintf(logfs,"%f\n", sec);						\

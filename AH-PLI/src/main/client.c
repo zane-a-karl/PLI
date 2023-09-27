@@ -1,3 +1,4 @@
+#include "../../hdr/utils.h"
 #include "../../hdr/protocols/utils.h"
 
 
@@ -12,37 +13,21 @@ main (
     int r;
     int sockfd;
     struct addrinfo *service_info;
-    char *hostname;
-    enum PliMethod pmeth;
-    enum ElgamalFlavor eflav;
-    enum HomomorphismType htype;
-    int sec_par;
-    char *filename;
+    InputArgs ia;
 
-    if (argc != 7) {
-	printf("usage: %s", argv[0]);
-	printf("<hostname> <pli method>");
-	printf("<security parameter> <filename>");
-	printf("<EG or ECEG> <MH or AH>\n");
-	return 1;
-    }
-    hostname =                                  argv[1];
-    r        =        str_to_pli_method(&pmeth, argv[2]);
-    r        =             str_to_int(&sec_par, argv[3]);
-    filename =                                  argv[4];
-    r        =    str_to_elgamal_flavor(&eflav, argv[5]);
-    r        = str_to_homomorphism_type(&htype, argv[6]);
-
-    hardcode_socket_parameters(&service_info, PORT, CLIENT, hostname);
+    r = parse_input_args(&ia, argc, argv);
+    if (!r) { return general_error("Failed within parse_input_args"); }
+    hardcode_socket_parameters(&service_info, PORT, CLIENT, ia.hostname);
     set_socket_and_connect(&sockfd, &service_info);
     freeaddrinfo(service_info);
 
     /* Start the protocol */
-    r = run(callback[CLIENT][pmeth][eflav][htype], sockfd, sec_par, filename);
+    PliProtocol protocol = callback[CLIENT][ia.pmeth][ia.eflav][ia.htype];
+    if (!protocol) { return general_error("Failed to find protocol in Lookup Table"); }
+    r = run(protocol, sockfd, ia);
     if (!r) {
 	close(sockfd);
-	perror("client: Failed during pli execution");
-	return 1;
+	return general_error("Client: Failed during pli execution");
     }
     close(sockfd);
     return 0;

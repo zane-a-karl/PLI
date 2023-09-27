@@ -3,12 +3,213 @@
 
 uint64_t total_bytes = 0;
 
+int
+parse_input_args (
+    InputArgs *ia,
+    int      argc,
+    char   **argv)
+{
+    int r;
+    int c;
+
+    /* Setup ia defaults */
+    ia->hostname  = "localhost";
+    ia->pmeth     = PLI;
+    ia->eflav     = ECEG;
+    ia->htype     = AH;
+    ia->secpar    = 64UL;
+    ia->threshold = 0;
+    ia->client_filename = "input/client.txt";
+    ia->server_filename = "input/server.txt";
+
+    int option_index = 0;
+    static struct option long_options[] =
+	{
+	    {"hostname",           required_argument, NULL, 'h'},
+	    {"pli-method",         required_argument, NULL, 'p'},
+	    {"elgamal-flavor",     required_argument, NULL, 'e'},
+	    {"homomorphism-type",  required_argument, NULL, 'm'},
+	    {"security-parameter", required_argument, NULL, 'y'},
+	    {"threshold",          required_argument, NULL, 't'},
+	    {"client-filename",    required_argument, NULL, 'c'},
+	    {"server-filename",    required_argument, NULL, 's'},
+	    {0, 0, 0, 0}
+	};
+    while (1) {
+	c = getopt_long(argc, argv, "h:p:e:m:y:t:c:s:", long_options, &option_index);
+	/* Detect the end of the options. */
+	if (c == -1) { break; }
+	switch (c) {
+        case 0:
+	    if (long_options[option_index].flag != 0) { break; }
+	    printf("option %s", long_options[option_index].name);
+	    if (optarg) {
+		printf(" with arg %s", optarg);
+	    }
+	    printf("\n");
+	    break;
+        case 'h':
+	    printf("option -h with value `%s'\n", optarg);
+	    ia->hostname = optarg;
+	    break;
+        case 'p':
+	    printf("option -p with value `%s'\n", optarg);
+	    r = str_to_pli_method(&ia->pmeth, optarg);
+	    if (!r) { return general_error("Failed to parse pli method"); }
+	    break;
+        case 'e':
+	    printf("option -e with value `%s'\n", optarg);
+	    r = str_to_elgamal_flavor(&ia->eflav, optarg);
+	    if (!r) { return general_error("Failed to parse elgamal flavor"); }
+	    break;
+        case 'm':
+	    printf("option -m with value `%s'\n", optarg);
+	    r = str_to_homomorphism_type(&ia->htype, optarg);
+	    if (!r) { return general_error("Failed to parse homomorphism type"); }
+	    break;
+        case 'y':
+	    printf("option -y with value `%s'\n", optarg);
+	    r = str_to_size_t(&ia->secpar, optarg);
+	    if (!r) { return general_error("Failed to parse secpar"); }
+	    break;
+        case 't':
+	    printf("option -t with value `%s'\n", optarg);
+	    r = str_to_size_t(&ia->threshold, optarg);
+	    if (!r) { return general_error("Failed to parse threshold"); }
+	    break;
+        case 'c':
+	    printf("option -c with value `%s'\n", optarg);
+	    ia->client_filename = optarg;
+	    break;
+        case 's':
+	    printf("option -s with value `%s'\n", optarg);
+	    ia->server_filename = optarg;
+	    break;
+        case '?':
+	    /* getopt_long returns its own error message */
+        default:
+	    printf("Usage: %s", argv[0]);
+	    printf("--hostname           -h <hostname>\n");
+	    printf("--pli-method         -p <pli method>\n");
+	    printf("--elgamal-flavor     -e <EG or ECEG>\n");
+	    printf("--homomorphism-type  -m <MH or AH>\n");
+	    printf("--security-parameter -y <security parameter>\n");
+	    printf("--threshold          -t <threshold>\n");
+	    printf("--client-filename    -c <client-filename>\n");
+	    printf("--server-filename    -s <server-filename>\n");
+	    return general_error("Failed to follow correct program usage");
+        } /* switch */
+    } /* while */
+
+    /* Print any remaining command line arguments (not options). */
+    if (optind < argc) {
+	printf("non-option ARGV-elements: ");
+	while (optind < argc) {
+	    printf("%s ", argv[optind++]);
+	}
+	putchar('\n');
+    }
+    if ( (ia->pmeth == t_PLI || ia->pmeth == t_PLI_ca || ia->pmeth == t_PLI_x) && !ia->threshold ) {
+	return general_error("Failed to match PLI method with threshold");
+    }
+    if (ia->secpar < 8) {
+	return general_error("Failed provide meaningful security parameter");
+    }
+    if ( ia->eflav == ECEG && ia->htype == MH ) {
+	return general_error("Library does not yet implement ECEG with MH");
+    }
+
+    return SUCCESS;
+}
+
+int
+str_to_pli_method (
+    enum PliMethod *pm,
+    char          *str)
+{
+    const int max_pmeth_str_len = 9;
+    if ( 0 == strncmp(str, "PLI", max_pmeth_str_len) ) {
+	*pm = PLI;
+    } else if ( 0 == strncmp(str, "PLIca", max_pmeth_str_len) ) {
+	*pm = PLI_ca;
+    } else if ( 0 == strncmp(str, "tPLI", max_pmeth_str_len) ) {
+	*pm = t_PLI;
+    } else if ( 0 == strncmp(str, "PLIx", max_pmeth_str_len) ) {
+	*pm = PLI_x;
+    } else if ( 0 == strncmp(str, "tPLIca", max_pmeth_str_len) ) {
+	*pm = t_PLI_ca;
+    } else if ( 0 == strncmp(str, "tPLIx", max_pmeth_str_len) ) {
+	*pm = t_PLI_x;
+    } else {
+	printf("Error: Input must match one of {PLI, PLIca, tPLI, PLIx, tPLIca, tPLIx} exactly\n");
+	return FAILURE;
+    }
+    return SUCCESS;
+}
+
+/**
+ *
+ */
+int
+str_to_homomorphism_type (
+    enum HomomorphismType *ht,
+    char                 *str)
+{
+    const int max = 3;
+    for (int i = 0; i < strnlen(str, max); i++) {
+	str[i] = toupper(str[i]);
+    }
+    if ( 0 == strncmp(str, "AH", max) ) {
+	*ht = AH;
+    } else if ( 0 == strncmp(str, "MH", max) ) {
+	*ht = MH;
+    } else {
+	return FAILURE;
+    }
+    return SUCCESS;
+}
+
+/**
+ *
+ */
+int
+str_to_elgamal_flavor (
+    enum ElgamalFlavor *ef,
+    char              *str)
+{
+    const int max = 10;
+    for (int i = 0; i < strnlen(str, max); i++) {
+	str[i] = tolower(str[i]);
+    }
+    if ( 0 == strncmp(str, "elgamal", max) ||
+	 0 == strncmp(str, "eg", max)) {
+	*ef = EG;
+    } else if ( 0 == strncmp(str, "ecelgamal", max) ||
+		0 == strncmp(str, "eceg", max)) {
+	*ef = ECEG;
+    } else {
+	return FAILURE;
+    }
+    return SUCCESS;
+}
+
+int
+str_to_size_t (
+    size_t *output,
+    char    *input)
+{
+    int r = sscanf(input, "%lu", output);
+    if (!r) { return FAILURE; }
+    return SUCCESS;
+}
+
 /**
  * Always returns FAILURE
  * prints a message corresponding to the error
  */
 int
-general_error (char *error_msg)
+general_error (
+    char *error_msg)
 {
     perror(error_msg);
     return FAILURE;
@@ -20,7 +221,8 @@ general_error (char *error_msg)
  * openssl error
  */
 int
-openssl_error (char *error_msg)
+openssl_error (
+    char *error_msg)
 {
     unsigned long error_code = ERR_get_error();
     perror(error_msg);
@@ -29,7 +231,8 @@ openssl_error (char *error_msg)
 }
 
 int
-log_base2 (int sec_par)
+log_base2 (
+    int sec_par)
 {
     int result = -1;
     while (sec_par > 0) {
@@ -41,7 +244,8 @@ log_base2 (int sec_par)
 
 // get sockaddr, IPv4 or IPv6:
 void *
-get_in_addr (struct sockaddr *sa)
+get_in_addr (
+    struct sockaddr *sa)
 {
     if ( sa->sa_family == AF_INET ) {
 	return &( ((struct sockaddr_in*)sa)->sin_addr );
@@ -50,7 +254,8 @@ get_in_addr (struct sockaddr *sa)
 }
 
 void
-sigchld_handler (int s)
+sigchld_handler (
+    int s)
 {
     // waitpid() might overwrite errno so we save and restore it.
     int saved_errno = errno;
@@ -59,10 +264,11 @@ sigchld_handler (int s)
 }
 
 void
-hardcode_socket_parameters (struct addrinfo **service_info,
-			    const char        *port_number,
-			    enum PartyType            type,
-			    char                 *hostname)
+hardcode_socket_parameters (
+    struct addrinfo **service_info,
+    const char        *port_number,
+    enum PartyType            type,
+    char                 *hostname)
 {
     int r;
     struct addrinfo hints; // field values for the listener socket
@@ -81,8 +287,9 @@ hardcode_socket_parameters (struct addrinfo **service_info,
 }
 
 void
-set_socket_and_bind (int    *socket_file_descriptor,
-		     struct addrinfo **service_info)
+set_socket_and_bind (
+    int    *socket_file_descriptor,
+    struct addrinfo **service_info)
 {
     int r;
     int yes = 1;
@@ -116,8 +323,9 @@ set_socket_and_bind (int    *socket_file_descriptor,
 }
 
 void
-set_socket_and_connect (int    *socket_file_descriptor,
-			struct addrinfo **service_info)
+set_socket_and_connect (
+    int    *socket_file_descriptor,
+    struct addrinfo **service_info)
 {
     int r;
     char ip_addr[INET6_ADDRSTRLEN];
@@ -156,8 +364,9 @@ set_socket_and_connect (int    *socket_file_descriptor,
  * the request may be ignored so that retries may succeed.
  */
 void
-start_server(int socket_file_descriptor,
-	     const int backlog)
+start_server (
+    int socket_file_descriptor,
+    const int          backlog)
 {
     int r;
     r = listen(socket_file_descriptor, backlog);
@@ -172,7 +381,8 @@ start_server(int socket_file_descriptor,
  * Review the beeg guide for why we need this function
  */
 void
-reap_all_dead_processes (void)
+reap_all_dead_processes (
+    void)
 {
     struct sigaction sa;
 
@@ -186,7 +396,8 @@ reap_all_dead_processes (void)
 }
 
 int
-accept_connection (int listener_sockfd)
+accept_connection (
+    int listener_sockfd)
 {
     int new_file_descriptor;
     socklen_t sin_size;
@@ -217,8 +428,9 @@ accept_connection (int listener_sockfd)
  * sure that I care to.
  */
 int
-generate_list_entries (uint64_t    **entries,
-		       int       num_entries)
+generate_list_entries (
+    uint64_t    **entries,
+    int       num_entries)
 {
     srand (time(NULL));
     for (int i = 0; i < num_entries-1 ; i++) {
@@ -231,8 +443,9 @@ generate_list_entries (uint64_t    **entries,
 }
 
 int
-parse_file_for_num_entries (int       *num_entries,
-			    char         *filename)
+parse_file_for_num_entries (
+    int       *num_entries,
+    char         *filename)
 {
     FILE *fin;
     int c, r, i = 0;
@@ -261,9 +474,10 @@ parse_file_for_num_entries (int       *num_entries,
 }
 
 int
-parse_file_for_list_entries (BIGNUM      **entries,
-			     int       num_entries,
-			     char        *filename)
+parse_file_for_list_entries (
+    BIGNUM      **entries,
+    int       num_entries,
+    char        *filename)
 {
     FILE *fin;
     char *buf = calloc(MAX_FILE_BYTES, sizeof(char));
@@ -283,6 +497,8 @@ parse_file_for_list_entries (BIGNUM      **entries,
 		buf[buf_i++] = c;
 		c = fgetc(fin);
 	    } while(isdigit(c));
+	    entries[entries_i] = BN_new();
+	    if (!entries[entries_i]) {r = 0; return openssl_error("Failed to alloc bn_plain"); }
 	    r = BN_dec2bn(&entries[entries_i], buf);
 	    if (!r) { return openssl_error("Failed to dec2bn entries"); }
 	    entries_i++;
@@ -302,8 +518,38 @@ parse_file_for_list_entries (BIGNUM      **entries,
     return SUCCESS;
 }
 
+/**
+ *
+ */
+int
+cstr_to_hex (
+    char **cstr,
+    size_t  len)
+{
+    size_t hex_len = 2*len;
+    char hex[hex_len];
+    for (int i = 0; i < len; i++) {
+	printf("(*cstr)[i] = %x\n", (*cstr)[i]);
+	printf("((*cstr)[i] >> 4) & 0xf0 = %x\n", ((*cstr)[i] >> 4) & 0x0f);
+	hex[2*i]     = ((*cstr)[i] >> 4) & 0x0f;
+
+	hex[2*i + 1] = (*cstr)[i] & (0xf0 >> 4);
+	printf("(*cstr)[i] & (0xf0 >> 4) = %x\n", (*cstr)[i] & (0xf0 >> 4));
+    }
+    *cstr = realloc((*cstr), hex_len * sizeof(char));
+    for (int i = 0; i < hex_len; i++) {
+	printf("%x", hex[i]);
+	snprintf(&(*cstr)[i], 1, "%x", hex[i]);
+    }
+    printf("\n");
+    printf("%s\n", (*cstr));
+    return SUCCESS;
+}
+
+
 char *
-pad_leading_zeros (char *msg)
+pad_leading_zeros (
+    char *msg)
 {
     int r;
     char *buffer;
@@ -325,24 +571,25 @@ pad_leading_zeros (char *msg)
 }
 
 int
-serialize_int (char **serialized,
-	       int          *msg)
+serialize_bignum (
+    char   **serialized,
+    BIGNUM         *msg)
 {
-    int r;
-
-    *serialized = calloc(FIXED_LEN, sizeof(char));
-    /* *serialized is null-terminated by this fn */
-    r = snprintf(*serialized, FIXED_LEN, "%d", *msg);
-    if (!r) {
-	return general_error("Failed to snprintf msg");
+    // buf is null-terminated and
+    // malloc'd by this fn
+    *serialized = BN_bn2hex(msg);
+    if (!*serialized) {
+	free(*serialized);
+	return openssl_error("Error bn2hex msg");
     }
     return SUCCESS;
 }
 
 int
-serialize_ecpoint (char   **serialized,
-		   EC_POINT       *msg,
-		   EC_GROUP     *group)
+serialize_ecpoint (
+    char   **serialized,
+    EC_POINT       *msg,
+    EC_GROUP     *group)
 {
     BN_CTX *ctx = BN_CTX_new();
     // *serialized is malloc'd by this fn
@@ -356,22 +603,55 @@ serialize_ecpoint (char   **serialized,
 }
 
 int
-serialize_bignum (char   **serialized,
-		  BIGNUM         *msg)
+serialize_int (
+    char **serialized,
+    int          *msg)
 {
-    // buf is null-terminated and
-    // malloc'd by this fn
-    *serialized = BN_bn2hex(msg);
-    if (!*serialized) {
-	free(*serialized);
-	return openssl_error("Error bn2hex msg");
+    int r;
+
+    *serialized = calloc(FIXED_LEN, sizeof(char));
+    /* *serialized is null-terminated by this fn */
+    r = snprintf(*serialized, FIXED_LEN, "%d", *msg);
+    if (!r) {
+	return general_error("Failed to snprintf msg");
     }
     return SUCCESS;
 }
 
 int
-send_msg_length (int file_descriptor,
-		 unsigned long length)
+serialize_size_t (
+    char **serialized,
+    size_t       *msg)
+{
+    int r;
+
+    *serialized = calloc(FIXED_LEN, sizeof(char));
+    /* *serialized is null-terminated by this fn */
+    r = snprintf(*serialized, FIXED_LEN, "%lu", *msg);
+    if (!r) {
+	return general_error("Failed to snprintf msg");
+    }
+    return SUCCESS;
+}
+
+int
+serialize_uchar (
+    char  **serialized,
+    unsigned char *msg,
+    size_t         len)
+{
+    *serialized = calloc(len, sizeof(char));
+    if (!*serialized) { return general_error("Failed to alloc *serialized"); }
+    for (int i = 0; i < len; i++) {
+	(*serialized)[i] = (char)msg[i];
+    }
+    return SUCCESS;
+}
+
+int
+send_msg_length (
+    int file_descriptor,
+    unsigned long length)
 {
     int r;
     char *fixed_buf;
@@ -400,19 +680,33 @@ send_msg_length (int file_descriptor,
 }
 
 int
-send_msg (int    file_descriptor,
-	  void              *msg,
-	  char         *conf_str,
-	  enum MessageType mtype,
-	  ...)
+send_msg (
+    int    file_descriptor,
+    void              *msg,
+    char         *conf_str,
+    enum MessageType mtype,
+    ...)
 {
     int r;
     char *buf;
     unsigned long buf_num_bytes;
     va_list args_ptr;
+    size_t len;
 
     /* Serialize fns alloc mem for buf */
     switch (mtype) {
+    case Integer:
+	r = serialize_int(&buf, (int *)msg);
+	break;
+    case SizeT:
+	r = serialize_size_t(&buf, (size_t *)msg);
+	break;
+    case UnsignedChar:
+	va_start(args_ptr, mtype);
+	len = va_arg(args_ptr, size_t);
+	r = serialize_uchar(&buf, (unsigned char *)msg, len);
+	va_end(args_ptr);
+	break;
     case Bignum:
 	r = serialize_bignum(&buf, (BIGNUM *)msg);
 	break;
@@ -422,15 +716,11 @@ send_msg (int    file_descriptor,
 	r = serialize_ecpoint(&buf, (EC_POINT *)msg, g);
 	va_end(args_ptr);
 	break;
-    case Integer:
-	r = serialize_int(&buf, (int *)msg);
-	break;
     default:
 	r = 0;
 	break;
     }
     if (!r) { return general_error("Failed to serialize msg"); }
-
     // Pre-send the real msg's length first
     buf_num_bytes = strnlen(buf, MAX_MSG_LEN);
     r = send_msg_length(file_descriptor, buf_num_bytes);
@@ -438,8 +728,17 @@ send_msg (int    file_descriptor,
     // Now send the real msg
     r = send(file_descriptor, buf, buf_num_bytes, 0);
     if (r == -1) { r = 0; return general_error("Failed to send msg"); }
-    total_bytes += r;
-    /* printf("%s %s\n", conf_str, buf); */
+
+    if (mtype == UnsignedChar) {
+	printf("%s ", conf_str);
+	for (int i = 0; i < buf_num_bytes; i++) {
+	    printf("%02x ", buf[i]);
+	}
+	printf("\n");
+    } else {
+	printf("%s %s\n", conf_str, buf);
+    }
+
     free(buf);
     if (!r) {
 	return FAILURE;
@@ -448,8 +747,9 @@ send_msg (int    file_descriptor,
 }
 
 int
-recv_msg_length (int   file_descriptor,
-		 unsigned long *length)
+recv_msg_length (
+    int   file_descriptor,
+    unsigned long *length)
 {
     int r;
     char *fixed_buf;
@@ -464,20 +764,9 @@ recv_msg_length (int   file_descriptor,
 }
 
 int
-deserialize_bignum (BIGNUM **msg,
-		    char    *buf)
-{
-    int r;
-    r = BN_hex2bn(msg, buf);
-    if (!r) {
-	return openssl_error("Failed hex2bn hex buf");
-    }
-    return SUCCESS;
-}
-
-int
-deserialize_int (int  *msg,
-		 char *buf)
+deserialize_int (
+    int  *msg,
+    char *buf)
 {
     int r;
     r = sscanf(buf, "%d", msg);
@@ -488,9 +777,49 @@ deserialize_int (int  *msg,
 }
 
 int
-deserialize_ecpoint (EC_POINT  **msg,
-		     char       *buf,
-		     EC_GROUP *group)
+deserialize_size_t (
+    size_t *msg,
+    char   *buf)
+{
+    int r;
+    r = sscanf(buf, "%lu", msg);
+    if (r == EOF) {
+	return general_error("Failed to sscanf msg_buffer_len");
+    }
+    return SUCCESS;
+}
+
+int
+deserialize_uchar (
+    unsigned char **msg,
+    char           *buf)
+{
+    int len = strnlen(buf, MAX_MSG_LEN);
+    for (int i = 0; i < len; i++) {
+	/* snprintf((char *)&(*msg)[i], len, "%02x", buf[i]);	 */
+	(*msg)[i] = (unsigned char)buf[i];
+    }
+    return SUCCESS;
+}
+
+int
+deserialize_bignum (
+    BIGNUM **msg,
+    char    *buf)
+{
+    int r;
+    r = BN_hex2bn(msg, buf);
+    if (!r) {
+	return openssl_error("Failed hex2bn hex buf");
+    }
+    return SUCCESS;
+}
+
+int
+deserialize_ecpoint (
+    EC_POINT  **msg,
+    char       *buf,
+    EC_GROUP *group)
 {
     EC_POINT *r;
     BN_CTX *ctx = BN_CTX_new();
@@ -503,11 +832,12 @@ deserialize_ecpoint (EC_POINT  **msg,
 }
 
 int
-recv_msg (int       file_descriptor,
-	  void                 *msg,
-	  char            *conf_str,
-	  enum MessageType    mtype,
-	  ...)
+recv_msg (
+    int       file_descriptor,
+    void                 *msg,
+    char            *conf_str,
+    enum MessageType    mtype,
+    ...)
 {
     int r;
     char *buf;
@@ -520,10 +850,27 @@ recv_msg (int       file_descriptor,
     r = recv(file_descriptor, buf, buf_num_bytes, 0);
     if ( r  == -1 ) { r = 0; return general_error("Failed to recv msg"); }
     buf[r] = '\0';
-    /* printf("%s %s\n", conf_str, buf); */
+    if (mtype != UnsignedChar) {
+	printf("%s %s\n", conf_str, buf);
+    } else {
+	printf("%s ", conf_str);
+	for (int i = 0; i < buf_num_bytes; i++) {
+	    printf("%02x ", (unsigned int)buf[i]);
+	}
+	printf("\n");
+    }
 
     /* Deserialize buf into msg */
     switch (mtype) {
+    case Integer:
+	r = deserialize_int((int *)msg, buf);
+	break;
+    case SizeT:
+	r = deserialize_size_t((size_t *)msg, buf);
+	break;
+    case UnsignedChar:
+	r = deserialize_uchar((unsigned char **)msg, buf);
+	break;
     case Bignum:
 	r = deserialize_bignum((BIGNUM **)msg, buf);
 	break;
@@ -532,9 +879,6 @@ recv_msg (int       file_descriptor,
 	EC_GROUP *g = va_arg(args_ptr, EC_GROUP *);
 	r = deserialize_ecpoint((EC_POINT **)msg, buf, g);
 	va_end(args_ptr);
-	break;
-    case Integer:
-	r = deserialize_int((int *)msg, buf);
 	break;
     default:
 	r = 0;
@@ -546,5 +890,170 @@ recv_msg (int       file_descriptor,
     if (!r) {
 	return FAILURE;
     }
+    return SUCCESS;
+}
+
+/**
+ * Hashes an input into an output via the alg specified by the name given by
+ * $openssl list -digest-algorithms
+ */
+int
+hash (
+    unsigned char **output,
+    void            *input,
+    char    *hash_alg_name,
+    size_t hash_digest_len,
+    enum MessageType mtype)
+{
+    int r;
+    int data_len;
+    unsigned char *data;
+    unsigned int output_len;
+
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    if (!ctx) { return openssl_error("Failed to alloc ctx"); }
+    EVP_MD *hash_alg = EVP_MD_fetch(NULL, hash_alg_name, NULL);
+    if (!hash_alg) { return openssl_error("Failed to fetch hash_alg"); }
+    r = EVP_DigestInit_ex(ctx, hash_alg, NULL);
+    if (!r) { return openssl_error("Failed to init hash_alg"); }
+
+    /* Parse 'void *input' into 'unsigned char *data' */
+    switch (mtype) {
+    case Bignum:
+	data_len = EVP_MAX_MD_SIZE;
+	data = calloc(data_len, sizeof(*data));
+	r = BN_bn2bin((BIGNUM *)input, data);
+	if (!r) { return openssl_error("Failed to bn2bin input"); }
+	break;
+    default:
+	break;
+    }
+
+    r = EVP_DigestUpdate(ctx, data, strlen((char *)data));
+    if (!r) { return openssl_error("Failed to hash data"); }
+
+    *output = calloc(hash_digest_len, sizeof(unsigned char));
+    r = EVP_DigestFinal_ex(ctx, *output, &output_len);
+    if (!r) { return openssl_error("Failed to hash leftover data"); }
+
+    // Print the hash value
+    /* printf("Hash Output: "); */
+    /* for (unsigned int i = 0; i < output_len; i++) { */
+    /*     printf("%02x", (*output)[i]); */
+    /* } */
+    /* printf("\n"); */
+
+    free(data);
+    EVP_MD_CTX_free(ctx);
+    return SUCCESS;
+}
+
+/**
+ * Encrypts an input into an output via the alg specified by the name given by
+ * $openssl list -cipher-algorithms
+ */
+int
+symmetric_encrypt (
+    unsigned char **output,
+    size_t     *output_len,
+    void            *input,
+    unsigned char     *key,
+    unsigned char      *iv,
+    char      *se_alg_name,
+    enum MessageType mtype)
+{
+    int r;
+    int data_len;
+    unsigned char *data;
+    int len;
+
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) { return openssl_error("Failed to alloc ctx"); }
+    EVP_CIPHER *se_alg = EVP_CIPHER_fetch(NULL, se_alg_name, NULL);
+    if (!se_alg) { return openssl_error("Failed to fetch se_alg"); }
+    r = EVP_EncryptInit(ctx, se_alg, key, iv);
+    if (!r) { return openssl_error("Failed to init se_alg"); }
+
+    /* Parse 'void *input' into 'unsigned char *data' */
+    switch (mtype) {
+    case Bignum:
+	data_len = EVP_MAX_MD_SIZE;
+	data = calloc(data_len, sizeof(*data));
+	r = BN_bn2bin((BIGNUM *)input, data);
+	if (!r) { return openssl_error("Failed to bn2bin input"); }
+	break;
+    default:
+	return openssl_error("Input unknown message typename");
+	break;
+    }
+
+    *output_len = 0;
+    *output = calloc(MAX_MSG_LEN, sizeof(unsigned char));
+    r = EVP_EncryptUpdate(ctx, *output, &len, data, strlen((char *)data));
+    if (!r) { return openssl_error("Failed to encrypt plaintext data"); }
+    *output_len += len;
+
+    r = EVP_EncryptFinal_ex(ctx, *output + *output_len, &len);
+    if (!r) { return openssl_error("Failed to encrypt leftovers"); }
+    *output_len += len;
+
+    // Print ciphertext
+    /* printf("Ciphertext: "); */
+    /* for (int i = 0; i < *output_len; i++) */
+    /*     printf("%02x ", (*output)[i]); */
+    /* printf("\n"); */
+
+    free(data);
+    EVP_CIPHER_CTX_free(ctx);
+    return SUCCESS;
+}
+
+/**
+ * Decrypts an input into an output via the alg specified by the name given by
+ * $openssl list -cipher-algorithms
+ */
+int
+symmetric_decrypt (
+    unsigned char **output,
+    unsigned char   *input,
+    int          input_len,
+    unsigned char     *key,
+    unsigned char      *iv,
+    char      *se_alg_name,
+    enum MessageType mtype)
+{
+    int r;
+    int len;
+
+    EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+    if (!ctx) { return openssl_error("Failed to alloc ctx"); }
+    EVP_CIPHER *se_alg = EVP_CIPHER_fetch(NULL, se_alg_name, NULL);
+    if (!se_alg) { return openssl_error("Failed to fetch se_alg"); }
+    r = EVP_DecryptInit(ctx, se_alg, key, iv);
+    if (!r) { return openssl_error("Failed to init se_alg_name"); }
+
+    int decryptedtext_len = 0;
+    *output = calloc(MAX_MSG_LEN, sizeof(unsigned char));
+    r = EVP_DecryptUpdate(ctx, *output, &len, input, input_len);
+    if (!r) { return openssl_error("Failed to decrypt ctxt data"); }
+    decryptedtext_len += len;
+
+    r = EVP_DecryptFinal_ex(ctx, *output + decryptedtext_len, &len);
+    if (!r) { return openssl_error("Failed to decrypt leftovers"); }
+    decryptedtext_len += len;
+
+    /* printf("Encrypted Text: "); */
+    /* for (int i = 0; i < input_len; i++) */
+    /*     printf("%02x ", input[i]); */
+    /* printf("\n"); */
+
+    // Add null terminator and print decrypted text
+    (*output)[decryptedtext_len] = '\0';
+    /* printf("Decrypted Text: "); */
+    /* for (int i = 0; i < decryptedtext_len; i++) */
+    /*     printf("%02x ", (*output)[i]); */
+    /* printf("\n"); */
+
+    EVP_CIPHER_CTX_free(ctx);
     return SUCCESS;
 }

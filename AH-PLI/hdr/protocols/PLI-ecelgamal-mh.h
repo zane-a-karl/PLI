@@ -5,17 +5,16 @@
 #include "../logging-utils.h"
 #include "../ecelgamal/mh-utils.h"
 
+typedef struct InputArgs InputArgs;
 
 int
 server_run_pli_ecelgamal_mh (
-    int                  new_fd,
-    int                 sec_par,
-    char              *filename);
+    int   new_fd,
+    InputArgs ia);
 
 int
 client_run_pli_ecelgamal_mh (
-    int                  sockfd,
-    int                 sec_par,
-    char *             filename);
+    int   sockfd,
+    InputArgs ia);
 
 #endif//_PLI_ECELGAMAL_MH_H_
