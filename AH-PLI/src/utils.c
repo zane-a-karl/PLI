@@ -208,7 +208,6 @@ str_to_elgamal_flavor (
     for (int i = 0; i < strnlen(str, max); i++) {
 	str[i] = tolower(str[i]);
     }
-    printf("the elfav = %s\n", str);
     if ( 0 == strncmp(str, "elgamal", max) ||
 	 0 == strncmp(str, "eg", max)) {
 	*ef = EG;

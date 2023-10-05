@@ -7,6 +7,8 @@
 #include <time.h>   // clock_gettime()
 
 
+#define MAX_FILENAME_LEN 64
+
 typedef struct LogItems {
     char *pmeth;
     char *eflav;
@@ -15,8 +17,9 @@ typedef struct LogItems {
 
 #define TSTART(sp)							\
     LogItems *l = parse_src_filename(__FILE__);				\
-    logfile = calloc(32, sizeof(char));					\
-    snprintf(logfile, 32, "%s%s-%s-%s-%lu.%s", "logs/", l->pmeth, l->eflav, l->htype, sp, "csv"); \
+    logfile = calloc(MAX_FILENAME_LEN, sizeof(char));			\
+    snprintf(logfile, MAX_FILENAME_LEN, "%s%s-%s-%s-%lu.%s", "logs/",	\
+	     l->pmeth, l->eflav, l->htype, sp, "csv");			\
     free(l->pmeth);							\
     free(l->eflav);							\
     free(l->htype);							\

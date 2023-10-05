@@ -11,7 +11,6 @@ LogItems *
 parse_src_filename (
     char *filename)
 {
-    const int max  = 32;
     const int split_char = '-';
     const char *prefix = "src/protocols/";
     const char *suffix = ".c";
@@ -23,7 +22,7 @@ parse_src_filename (
     char *name;
 
     /* Remove "src/protocols/" prefix  */
-    prefix_len   = strnlen(prefix, max);
+    prefix_len   = strnlen(prefix, MAX_FILENAME_LEN);
     if ( 0 == strncmp(filename, prefix, prefix_len) ) {
 	filename = filename + prefix_len;
     }
@@ -31,15 +30,15 @@ parse_src_filename (
     /* Deep copy the filename otherwise suffix truncation seg faults */
     /* Deep copy after prefix trucation because otherwise we need to
        save the original pointer to free correctly */
-    filename_len = strnlen(filename, max);
+    filename_len = strnlen(filename, MAX_FILENAME_LEN);
     name = calloc(filename_len, sizeof(*name));
     for (int i = 0; i < filename_len; i++) {
 	name[i] = filename[i];
     }
 
     /* Remove ".c" suffix  */
-    name_len   = strnlen(name, max);
-    suffix_len = strnlen(suffix, max);
+    name_len   = strnlen(name, MAX_FILENAME_LEN);
+    suffix_len = strnlen(suffix, MAX_FILENAME_LEN);
     if ( 0 == strncmp(name + name_len - suffix_len, suffix, suffix_len) ) {
 	for (int i = name_len - suffix_len; i < name_len; i++)
 	    name[i] = '\0';

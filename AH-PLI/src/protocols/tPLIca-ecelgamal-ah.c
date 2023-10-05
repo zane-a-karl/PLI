@@ -1,4 +1,4 @@
-#include "../../hdr/protocols/PLIca-ecelgamal-ah.h"
+#include "../../hdr/protocols/tPLIca-ecelgamal-ah.h"
 
 
 extern uint64_t total_bytes;
@@ -8,12 +8,11 @@ static FILE *logfs;
 static char *logfile;
 
 int
-server_run_pli_ca_ecelgamal_ah (
+server_run_t_pli_ca_ecelgamal_ah (
     int   new_fd,
     InputArgs ia)
 {
     int r;
-    int matches = 0;
     EcGamalKeys server_keys;
     BN_CTX *ctx = BN_CTX_new();
 
@@ -39,20 +38,21 @@ server_run_pli_ca_ecelgamal_ah (
 	r = ecelgamal_send_ciphertext(new_fd, &server_cipher[i], server_keys.pk, "Server sent:");
 	if (!r) { return general_error("Failed to send server ciphertext"); }
     }
-
     EcGamalCiphertext client_cipher[ia.num_entries];
     for (size_t i = 0; i < ia.num_entries; i++) {
-	/* Fn alloc's client_cipher fields */
-	r = ecelgamal_recv_ciphertext(new_fd, &client_cipher[i], server_keys.pk, "Server recv:");
-	if (!r) { return general_error("Failed to recv client ciphertext"); }
+	/* Client only sends c1 so Server doesn't need c2,
+	   but I use it as a tmp storage space in the
+	   thresholding function so I alloc it here. */
+	client_cipher[i].c1 = EC_POINT_new(server_keys.pk->group);
+	client_cipher[i].c2 = EC_POINT_new(server_keys.pk->group);
+	r = recv_msg(new_fd, &client_cipher[i].c1, "Server recv client ctxt.c1: ", Ecpoint,
+		     server_keys.pk->group);
+	if (!r) { return general_error("Failed to recv client_ciphertext.c1"); }
     }
 
-    for (size_t i = 0; i < ia.num_entries; i++) {
-	r = ecelgamal_skip_dlog_check_is_at_infinity(server_keys, client_cipher[i], &matches);
-	if (!r) { return general_error("Failed skip decrypt check"); }
-    }
-    printf("# Matches = %*i\n", -3, matches);
-    printf("# Misses  = %*lu\n", -3, ia.num_entries - matches);
+    /* Elgamal-based Server side thresholding protocol */
+    r = ecelgamal_server_brute_force_thresholding(new_fd, server_keys, client_cipher, ia);
+    if (!r) { return general_error("Failed during ecelgamal_server_brute_force_thresholding"); }
     COLLECT_LOG_ENTRY(ia.secpar, ia.num_entries, total_bytes);
 
     EC_GROUP_free(server_keys.pk->group);
@@ -64,8 +64,8 @@ server_run_pli_ca_ecelgamal_ah (
     BN_free(server_keys.pk->b);
     free(server_keys.pk);
     BN_free(server_keys.sk->secret);
-    free(server_keys.sk);
-    for (size_t i = 0; i < ia.num_entries; i++) {
+    free(server_keys.sk);    
+    for (int i = 0; i < ia.num_entries; i++) {
 	EC_POINT_free(client_cipher[i].c1);
 	EC_POINT_free(client_cipher[i].c2);
 	EC_POINT_free(server_cipher[i].c1);
@@ -80,7 +80,7 @@ server_run_pli_ca_ecelgamal_ah (
 }
 
 int
-client_run_pli_ca_ecelgamal_ah (
+client_run_t_pli_ca_ecelgamal_ah (
     int   sockfd,
     InputArgs ia)
 {
@@ -105,7 +105,7 @@ client_run_pli_ca_ecelgamal_ah (
     if (!r) { return general_error("Failed to parse file for list entries"); }
 
     BIGNUM *bn_inv_plain[ia.num_entries];
-    for (size_t i = 0; i < ia.num_entries; i++) {
+    for (int i = 0; i < ia.num_entries; i++) {
 	bn_inv_plain[i] = BN_dup(bn_plain[i]);
 	BN_set_negative(bn_inv_plain[i], 1);
 	if (!bn_inv_plain[i]) { openssl_error("Failed to negate bn_plain"); }
@@ -117,29 +117,34 @@ client_run_pli_ca_ecelgamal_ah (
 	if (!r) { return general_error("Error encrypting bn_inv_plain"); }
     }
     EcGamalCiphertext add_res[ia.num_entries];
-    for (size_t i = 0; i < ia.num_entries; i++) {
+    for (int i = 0; i < ia.num_entries; i++) {
 	/* add_res alloc'd within fn */
 	r = ecelgamal_add(&add_res[i], server_cipher[i], client_cipher[i], server_pk);
 	if (!r) { return general_error("Failed to calc server_ciph + client_ciph"); }
     }
     BIGNUM *bn_rand_mask[ia.num_entries];
-    for (size_t i = 0; i < ia.num_entries; i++) {
+    for (int i = 0; i < ia.num_entries; i++) {
 	bn_rand_mask[i] = BN_new();
 	r = BN_rand_range_ex(bn_rand_mask[i], server_pk.p, ia.secpar, ctx);
 	if (!r) { return openssl_error("Failed to gen rand_mask"); }
     }
     EcGamalCiphertext ptmul_res[ia.num_entries];
-    for (size_t i = 0; i < ia.num_entries; i++) {
+    for (int i = 0; i < ia.num_entries; i++) {
 	/* ptmul_res alloc'd w/n fn */
 	r = ecelgamal_ptmul(&ptmul_res[i], add_res[i], bn_rand_mask[i], server_pk);
 	if (!r) { return general_error("Failed to point mul the ciphertexts"); }
     }
     r = ecelgamal_permute_ciphertexts(ptmul_res, (unsigned long)ia.num_entries, server_pk.group);
-    if (!r) { return general_error("Failed to permute ciphertext entries"); }
-    for (size_t i = 0; i < ia.num_entries; i++) {
-	r = ecelgamal_send_ciphertext(sockfd, &ptmul_res[i], &server_pk, "Client sent:");
-	if (!r) { return general_error("Failed to send exp_res"); }
+    if (!r) { return general_error("Failed to permute ciphertext entries"); }    
+    for (int i = 0; i < ia.num_entries; i++) {    
+	r = send_msg(sockfd, ptmul_res[i].c1, "Client sent ptmul_res[i].c1:", Ecpoint,
+		     server_pk.group);
+	if (!r) { return general_error("Failed to send ptmul_res[i].c1"); }	
     }
+
+    /* Ecelgamal-based client side brute force thresholding protocol */
+    r = ecelgamal_client_brute_force_thresholding(sockfd, server_pk, ptmul_res, ia);
+    if (!r) { return general_error("Failed during ecelgamal_client_brute_force_thresholding"); }
 
     EC_GROUP_free(server_pk.group);
     BN_free(server_pk.order);
@@ -148,7 +153,7 @@ client_run_pli_ca_ecelgamal_ah (
     BN_free(server_pk.p);
     BN_free(server_pk.a);
     BN_free(server_pk.b);
-    for (size_t i = 0; i < ia.num_entries; i++) {
+    for (int i = 0; i < ia.num_entries; i++) {
 	BN_free(bn_plain[i]);
 	BN_free(bn_inv_plain[i]);
 	BN_free(bn_rand_mask[i]);

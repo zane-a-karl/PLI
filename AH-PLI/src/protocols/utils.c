@@ -62,7 +62,7 @@ PliProtocol callback[NUM_PARTY_TYPES][NUM_PLI_METHODS][NUM_ELGAMAL_FLAVORS][NUM_
 		NULL,
 	    },
 	    {//eflav = 1 = ECEG
-		NULL,
+		client_run_t_pli_ca_ecelgamal_ah,//htype = 0 = AH
 		NULL,
 	    }
 	},
@@ -124,7 +124,7 @@ PliProtocol callback[NUM_PARTY_TYPES][NUM_PLI_METHODS][NUM_ELGAMAL_FLAVORS][NUM_
 		NULL,
 	    },
 	    {//eflav = 1 = ECEG
-		NULL,
+		server_run_t_pli_ca_ecelgamal_ah,//htype = 0 = AH
 		NULL,
 	    }
 	},

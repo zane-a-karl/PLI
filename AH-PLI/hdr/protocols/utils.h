@@ -16,6 +16,11 @@
 #include "tPLI-ecelgamal-ah.h"
 /* #include "tPLI-ecelgamal-mh.h" */
 
+/* #include "tPLI-elgamal-ah.h" */
+/* #include "tPLI-elgamal-mh.h" */
+#include "tPLIca-ecelgamal-ah.h"
+/* #include "tPLI-ecelgamal-mh.h" */
+
 typedef int (*PliProtocol)(int, InputArgs);
 
 extern
