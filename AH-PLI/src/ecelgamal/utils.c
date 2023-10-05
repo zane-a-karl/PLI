@@ -49,9 +49,9 @@ ecelgamal_generate_keys (
     keys->pk->order = BN_new();
     r = EC_GROUP_get_order(keys->pk->group, keys->pk->order, ctx);
     if (!r) { perror("Failed to get group order"); return FAILURE; }
-    printf("order = ");
-    BN_print_fp(stdout, keys->pk->order);
-    printf("\n");
+    /* printf("order = "); */
+    /* BN_print_fp(stdout, keys->pk->order); */
+    /* printf("\n"); */
     // Initialize sk
     keys->sk = calloc(1, sizeof(EcGamalPk));    
     keys->sk->secret = BN_new();
@@ -73,15 +73,15 @@ ecelgamal_generate_keys (
     keys->pk->b = BN_new();
     r = EC_GROUP_get_curve(keys->pk->group, keys->pk->p, keys->pk->a, keys->pk->b, ctx);
     if (!r) { perror("Failed to get curve params"); return FAILURE; }
-    printf("p = ");
-    BN_print_fp(stdout, keys->pk->p);
-    printf("\n");
-    printf("a = ");
-    BN_print_fp(stdout, keys->pk->a);
-    printf("\n");
-    printf("b = ");
-    BN_print_fp(stdout, keys->pk->b);
-    printf("\n");
+    /* printf("p = "); */
+    /* BN_print_fp(stdout, keys->pk->p); */
+    /* printf("\n"); */
+    /* printf("a = "); */
+    /* BN_print_fp(stdout, keys->pk->a); */
+    /* printf("\n"); */
+    /* printf("b = "); */
+    /* BN_print_fp(stdout, keys->pk->b); */
+    /* printf("\n"); */
     // Check if it's indeed prime
     r = BN_check_prime(keys->pk->p, ctx, NULL);
     if (!r) { perror("Failed to generate true prime"); return FAILURE; }

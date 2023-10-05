@@ -265,7 +265,7 @@ elgamal_send_pk (
     char *conf_prefix)
 {
     int r;
-    printf("%s\n", conf_prefix);
+    /* printf("%s\n", conf_prefix); */
     r = send_msg(sockfd, pk->modulus, "\t- modulus   =", Bignum);
     if (!r) { return general_error("Failed to send modulus"); }
     r = send_msg(sockfd, pk->generator, "\t- generator =", Bignum);
@@ -282,7 +282,7 @@ elgamal_send_ciphertext (
     char  *conf_prefix)
 {
     int r;
-    printf("%s\n", conf_prefix);
+    /* printf("%s\n", conf_prefix); */
     r = send_msg(sockfd, c->c1, "\t- c1 = ", Bignum);
     if (!r) { return general_error("Failed to send ciphertext.c1"); }
     r = send_msg(sockfd, c->c2, "\t- c2 = ", Bignum);
@@ -298,7 +298,7 @@ elgamal_send_shamir_shares (
     char  *conf_prefix)
 {
     int r;
-    printf("%s\n", conf_prefix);
+    /* printf("%s\n", conf_prefix); */
     for (int i = 0; i < num_shares; i++) {
 	r = send_msg(sockfd, shares[i], "\t- share = ", Bignum);
 	if (!r) { return general_error("Failed to send share"); }
@@ -320,7 +320,7 @@ elgamal_recv_pk (
     pk->mul_mask = BN_new();
     if (!pk->mul_mask) {r = 0; return openssl_error("Failed to alloc mul_mask");}
 
-    printf("%s\n", conf_prefix);
+    /* printf("%s\n", conf_prefix); */
     r = recv_msg(sockfd, &pk->modulus, "\t- modulus   = ", Bignum);
     if (!r) { return general_error("Failed to recv modulus"); }
     r = recv_msg(sockfd, &pk->generator, "\t- generator = ", Bignum);
@@ -343,7 +343,7 @@ elgamal_recv_ciphertext (
     c->c2 = BN_new();
     if (!c->c2) {r = 0; return openssl_error("Failed to alloc ciphertext c2"); }
 
-    printf("%s\n", conf_prefix);
+    /* printf("%s\n", conf_prefix); */
     r = recv_msg(sockfd, &c->c1, "\t- c1 = ", Bignum);
     if (!r) { return general_error("Failed to recv ciphertext c1"); }
     r = recv_msg(sockfd, &c->c2, "\t- c2 = ", Bignum);

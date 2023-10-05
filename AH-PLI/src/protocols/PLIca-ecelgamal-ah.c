@@ -39,7 +39,6 @@ server_run_pli_ca_ecelgamal_ah (
 	r = ecelgamal_send_ciphertext(new_fd, &server_cipher[i], server_keys.pk, "Server sent:");
 	if (!r) { return general_error("Failed to send server ciphertext"); }
     }
-    COLLECT_LOG_ENTRY(ia.secpar, ia.num_entries, total_bytes);
 
     EcGamalCiphertext client_cipher[ia.num_entries];
     for (size_t i = 0; i < ia.num_entries; i++) {
@@ -54,7 +53,7 @@ server_run_pli_ca_ecelgamal_ah (
     }
     printf("# Matches = %*i\n", -3, matches);
     printf("# Misses  = %*lu\n", -3, ia.num_entries - matches);
-    /* COLLECT_LOG_ENTRY(ia.secpar, ia.num_entries, total_bytes); */
+    COLLECT_LOG_ENTRY(ia.secpar, ia.num_entries, total_bytes);
 
     EC_GROUP_free(server_keys.pk->group);
     BN_free(server_keys.pk->order);

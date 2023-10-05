@@ -10,33 +10,65 @@ fi
 
 source ./scripts/helpers.sh
 
-# Check sufficient arguments
-if [[ $# -ne 4 ]]; then
-    echo "Error: Insufficient arguments provided";
-    echo "Usage $0 <pli method> <elgamal flavor> <homomorphism type> <security parameter>";
-    exit 1;
-fi
-
-# Global variables
+# Global variable defaults
 client_file="input/client.txt"
 server_file="input/server.txt"
 tmp_file="input/tmp.txt"
 start_size=10
 end_size=100
 sample_size=10
-pmeth=$(echo "$1" | to_lower | beautify_pmeth);
-eflav=$(echo "$2" | to_upper | beautify_eflav);
-htype=$(to_upper "$3");
-secpar="$4"
+pmeth="PLI"
+eflav="ECEG"
+htype="AH"
+secpar=224
+list_len=10
+thresh=3
 
-if [[ "${eflav:0:1}" != "e" ]] || [[ "${htype: -1}" != "H" ]] || ! [[ "$secpar" =~ ^[0-9]*$ ]]; then
-    echo "Input arguements are out of order"
-    exit
-fi
+# Use getopts to handle argument input more cleanly
+while getopts "p:e:m:y:n:t:" opt; do
+    case $opt in
+	p)
+	    echo "Option 'p' was triggered with argument: $OPTARG"
+	    pmeth=$OPTARG
+	    ;;
+	e)
+	    echo "Option 'e' was triggered with argument: $OPTARG"
+	    eflav=$OPTARG	    
+	    ;;
+	m)
+	    echo "Option 'm' was triggered with argument: $OPTARG"
+	    htype=$OPTARG
+	    ;;
+	y)
+	    echo "Option 'y' was triggered with argument: $OPTARG"
+	    secpar=$OPTARG	    
+	    ;;
+	n)
+	    echo "Option 'd' was triggered with argument: $OPTARG"
+	    list_len=$OPTARG;
+	    ;;
+	t)
+	    echo "Option 'd' was triggered with argument: $OPTARG"
+	    thresh=$OPTARG
+	    ;;    
+	\?)
+	    # Invalid option
+	    echo "Invalid option: -$OPTARG"
+	    exit 1
+	    ;;
+    esac
+done
+
+# After processing options, you can access non-option arguments (e.g., filenames) like this:
+shift $((OPTIND - 1))
+echo "Non-option arguments: $@"
+
+pmeth=$(echo "$pmeth" | to_lower | beautify_pmeth);
+eflav=$(echo "$eflav" | to_upper | beautify_eflav);
+htype=$(to_upper "$htype");
 
 logfile="logs/$pmeth-$eflav-$htype-$secpar.csv"
-# echo "$logfile"
-# exit
+echo "$logfile"
 
 make --quiet clean;
 make --quiet;
@@ -56,7 +88,8 @@ do
     for ((j=0; j<$sample_size; j++))
     do
 	printf "%s%d\n" "Begin: $pmeth $eflav $htype Protocol #" "$j"
-	./bin/main/client-and-server "localhost" "$pmeth" "$secpar" "$server_file" "$client_file" "$eflav" "$htype"
+	# exit
+	./bin/main/client-and-server -p "$pmeth" -y "$secpar" -e "$eflav" -m "$htype" -t "$thresh"
 	#	$pids=$(ps aux | grep "elgamal" | grep -v "grep" | awk '{print $2}')
 	wait
 	printf "%s%d\n\n" "Finish:  $pmeth $eflav $htype Protocol #" "$j"

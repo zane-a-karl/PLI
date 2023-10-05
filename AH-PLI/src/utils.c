@@ -1,7 +1,7 @@
 #include "../hdr/utils.h"
 
 
-uint64_t total_bytes = 0;
+size_t total_bytes = 0;
 
 /**
  *
@@ -208,6 +208,7 @@ str_to_elgamal_flavor (
     for (int i = 0; i < strnlen(str, max); i++) {
 	str[i] = tolower(str[i]);
     }
+    printf("the elfav = %s\n", str);
     if ( 0 == strncmp(str, "elgamal", max) ||
 	 0 == strncmp(str, "eg", max)) {
 	*ef = EG;
@@ -818,16 +819,16 @@ send_msg (
 	if (r == -1) { r = 0; return general_error("Failed to send msg"); }
 	bytes_sent += r;
     }
-
-    if (mtype == UnsignedChar) {
-	printf("%s ", conf_str);
-	for (int i = 0; i < buf_num_bytes; i++) {
-	    printf("%02x ", buf[i]);
-	}
-	printf("\n");
-    } else {
-	printf("%s %s\n", conf_str, buf);
-    }
+    total_bytes += bytes_sent;
+    /* if (mtype == UnsignedChar) { */
+    /* 	printf("%s ", conf_str); */
+    /* 	for (int i = 0; i < buf_num_bytes; i++) { */
+    /* 	    printf("%02x ", buf[i]); */
+    /* 	} */
+    /* 	printf("\n"); */
+    /* } else { */
+    /* 	printf("%s %s\n", conf_str, buf); */
+    /* } */
 
     free(buf);
     if (!r) {
@@ -961,15 +962,15 @@ recv_msg (
     r = recv(file_descriptor, buf, buf_num_bytes, 0);
     if ( r  == -1 ) { r = 0; return general_error("Failed to recv msg"); }
     buf[r] = '\0';
-    if (mtype != UnsignedChar) {
-	printf("%s %s\n", conf_str, buf);
-    } else {
-	printf("%s ", conf_str);
-	for (int i = 0; i < buf_num_bytes; i++) {
-	    printf("%02x ", (unsigned int)buf[i]);
-	}
-	printf("\n");
-    }
+    /* if (mtype != UnsignedChar) { */
+    /* 	printf("%s %s\n", conf_str, buf); */
+    /* } else { */
+    /* 	printf("%s ", conf_str); */
+    /* 	for (int i = 0; i < buf_num_bytes; i++) { */
+    /* 	    printf("%02x ", (unsigned int)buf[i]); */
+    /* 	} */
+    /* 	printf("\n"); */
+    /* } */
 
     /* Deserialize buf into msg */
     switch (mtype) {
@@ -1325,10 +1326,10 @@ reconstruct_shamir_secret (
 	BN_set_word(save_x[i], subset_indexes[i] + 1);
 	BN_copy(save_y[i], shares[subset_indexes[i]]);
     }
-    for (i = 0; i < t; i++) {
-	printf("x = "); BN_print_fp(stdout, save_x[i]);
-	printf(", y = "); BN_print_fp(stdout, save_y[i]); printf("\n");
-    }
+    /* for (i = 0; i < t; i++) { */
+    /* 	printf("x = "); BN_print_fp(stdout, save_x[i]); */
+    /* 	printf(", y = "); BN_print_fp(stdout, save_y[i]); printf("\n"); */
+    /* } */
     /* Fn alloc's secret */
     r = try_reconstruct_with(secret, save_x, save_y, t, modulus);
     if (!r) { return openssl_error("Failed during try_reconstruct_with"); }
@@ -1417,7 +1418,7 @@ iteratively_check_all_subsets (
         if (i < 0) {
 	    printf("FAILURE :(\n");
 	    printf("Threshold unmet\n");	    	    
-            return FAILURE;
+            break;
         }
 
         subset_indexes[i]++;
@@ -1427,5 +1428,5 @@ iteratively_check_all_subsets (
             subset_indexes[j] = subset_indexes[j - 1] + 1;
         }
     }
-    return FAILURE;
+    return SUCCESS;
 }

@@ -76,20 +76,20 @@ ecelgamal_server_brute_force_thresholding (
 		uchar_shares[i][j] = sym_enc_shares[i][j];
 	    }
 	}
-	printf("Decrypted Shares: ");
-	for (int j = 0; j < sym_enc_shares_lens[i]; j++)
-	    printf("%02x ", uchar_shares[i][j]);
-	printf("\n");
+	/* printf("Decrypted Shares: "); */
+	/* for (int j = 0; j < sym_enc_shares_lens[i]; j++) */
+	/*     printf("%02x ", uchar_shares[i][j]); */
+	/* printf("\n"); */
 	shares[i] = BN_new();
 	BN_bin2bn(uchar_shares[i], sym_enc_shares_lens[i], shares[i]);
 	if (!shares[i]) { return openssl_error("Failed to bin2bn the uchar shares"); }
     }
-    for (size_t i = 0; i < ia.num_entries; i++) {
-	printf("Keys(cipher digests) ------>: ");
-	for (int j = 0; j < digest_len; j++)
-	    printf("%02x ", cipher_digests[i][j]);
-	printf("\n");
-    }
+    /* for (size_t i = 0; i < ia.num_entries; i++) { */
+    /* 	printf("Keys(cipher digests) ------>: "); */
+    /* 	for (int j = 0; j < digest_len; j++) */
+    /* 	    printf("%02x ", cipher_digests[i][j]); */
+    /* 	printf("\n"); */
+    /* } */
 
     /* 4. reconstruct SSS's with the s'_i's to get s' */
     /* 5. hash s' and compare with the hash(s) you received */
@@ -139,13 +139,13 @@ ecelgamal_client_brute_force_thresholding (
     if (!r) { return general_error("Failed to construct shamir shares"); }
     unsigned char *uchar_shares[ia.num_entries];
     for (size_t i = 0; i < ia.num_entries; i++) {
-	printf("Uchar Shares: ");
+	/* printf("Uchar Shares: "); */
 	uchar_shares[i] = calloc(BN_num_bytes(shares[i]), sizeof(unsigned char));
 	BN_bn2bin(shares[i], uchar_shares[i]);
 	if (!(uchar_shares + i)) { return openssl_error("Failed to bn2bin the shares"); }
-	for (int j = 0; j < BN_num_bytes(shares[i]); j++)
-	    printf("%02x ", uchar_shares[i][j]);
-	printf("\n");
+	/* for (int j = 0; j < BN_num_bytes(shares[i]); j++) */
+	/*     printf("%02x ", uchar_shares[i][j]); */
+	/* printf("\n"); */
     }
 
     /* 3. hash (cipher[i].c2) and store into cipher_hashes[i] */
@@ -175,14 +175,14 @@ ecelgamal_client_brute_force_thresholding (
 	    break;
 	}
 	if (!r) { return openssl_error("Failed to hash cipher[i].c2 or secret"); }
-	printf("Keys(cipher digests) ------>: ");
-	for (int j = 0; j < digest_len; j++)
-	    printf("%02x ", cipher_digests[i][j]);
-	printf("\n");
+	/* printf("Keys(cipher digests) ------>: "); */
+	/* for (int j = 0; j < digest_len; j++) */
+	/*     printf("%02x ", cipher_digests[i][j]); */
+	/* printf("\n"); */
     }
-    printf("##########################################################\n");
-    printf("digest len = %zu\n", digest_len);
-    printf("##########################################################\n");
+    /* printf("##########################################################\n"); */
+    /* printf("digest len = %zu\n", digest_len); */
+    /* printf("##########################################################\n"); */
 
     /* 4. Encrypt (s_i) with AES using arr[i] as key */
     unsigned char *sym_enc_shares[ia.num_entries];
@@ -199,10 +199,10 @@ ecelgamal_client_brute_force_thresholding (
 	    }
 	}
 	sym_enc_shares_lens[i] = bytes_per_share;
-	printf("Encrypted Shares: ");
-	for (int j = 0; j < sym_enc_shares_lens[i]; j++)
-	    printf("%02x ", sym_enc_shares[i][j]);
-	printf("\n");
+	/* printf("Encrypted Shares: "); */
+	/* for (int j = 0; j < sym_enc_shares_lens[i]; j++) */
+	/*     printf("%02x ", sym_enc_shares[i][j]); */
+	/* printf("\n"); */
     }
 
     /* 5. send output of (4), and hash(s) to server */
