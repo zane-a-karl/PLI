@@ -38,11 +38,11 @@ PliProtocol callback[NUM_PARTY_TYPES][NUM_PLI_METHODS][NUM_ELGAMAL_FLAVORS][NUM_
 	},
 	{//pmeth = 2 = tPLI
 	    {//eflav = 0 = EG
-		NULL,//htype = 0 = AH
+		client_run_t_pli_elgamal_ah,//htype = 0 = AH
 		client_run_t_pli_elgamal_mh,//htype = 1 = MH
 	    },
 	    {//eflav = 1 = ECEG
-		NULL,
+		client_run_t_pli_ecelgamal_ah,//htype = 0 = AH
 		NULL,
 	    }
 	},
@@ -85,7 +85,7 @@ PliProtocol callback[NUM_PARTY_TYPES][NUM_PLI_METHODS][NUM_ELGAMAL_FLAVORS][NUM_
 	    },
 	    {//eflav = 1 = ECEG
 		server_run_pli_ecelgamal_ah,//htype = 0 = AH
-		server_run_pli_ecelgamal_mh,//htype = 1 = MH
+		NULL,//htype = 1 = MH
 	    }
 	},
 	{//pmeth = 1 = PLIca
@@ -100,11 +100,11 @@ PliProtocol callback[NUM_PARTY_TYPES][NUM_PLI_METHODS][NUM_ELGAMAL_FLAVORS][NUM_
 	},
 	{//pmeth = 2 = tPLI
 	    {//eflav = 0 = EG
-		NULL,//htype = 0 = AH
+		server_run_t_pli_elgamal_ah,//htype = 0 = AH
 		server_run_t_pli_elgamal_mh,//htype = 1 = MH
 	    },
 	    {//eflav = 1 = ECEG
-		NULL,//htype = 0 = AH
+		server_run_t_pli_ecelgamal_ah,//htype = 0 = AH
 		NULL,//htype = 1 = MH
 	    }
 	},

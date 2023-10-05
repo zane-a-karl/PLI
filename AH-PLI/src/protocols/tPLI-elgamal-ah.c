@@ -1,4 +1,4 @@
-#include "../../hdr/protocols/PLI-elgamal-mh.h"
+#include "../../hdr/protocols/tPLI-elgamal-ah.h"
 
 
 extern uint64_t total_bytes;
@@ -8,12 +8,11 @@ static FILE *logfs;
 static char *logfile;
 
 int
-server_run_pli_ca_elgamal_mh (
+server_run_t_pli_elgamal_ah (
     int   new_fd,
     InputArgs ia)
 {
     int r;
-    int matches = 0;
     GamalKeys server_keys;
     BN_CTX *ctx = BN_CTX_new();
 
@@ -34,24 +33,25 @@ server_run_pli_ca_elgamal_mh (
     GamalCiphertext server_cipher[ia.num_entries];
     for (size_t i = 0; i < ia.num_entries; i++) {
 	/* Fn alloc's server_cipher fields */
-	r = elgamal_mh_encrypt(&server_cipher[i], *server_keys.pk, bn_plain[i], ia.secpar);
+	r = elgamal_ah_encrypt(&server_cipher[i], *server_keys.pk, bn_plain[i], ia.secpar);
 	if (!r) { return general_error("Failed to encrypt server plaintext"); }
 	r = elgamal_send_ciphertext(new_fd, &server_cipher[i], "Server sent:");
 	if (!r) { return general_error("Failed to send server ciphertext"); }
     }
     GamalCiphertext client_cipher[ia.num_entries];
     for (size_t i = 0; i < ia.num_entries; i++) {
-	/* Fn alloc's client_cipher fields */
-	r = elgamal_recv_ciphertext(new_fd, &client_cipher[i], "Server recv:");
-	if (!r) { return general_error("Failed to recv client ciphertext"); }
+	/* Client only sends c1 so Server doesn't need c2,
+	   but I use it as a tmp storage space in the
+	   thresholding function so I alloc it here. */
+	client_cipher[i].c1 = BN_new();
+	client_cipher[i].c2 = BN_new();
+	r = recv_msg(new_fd, &client_cipher[i].c1, "Server recv client ctxt.c1: ", Bignum);
+	if (!r) { return general_error("Failed to recv client_ciphertext.c1"); }
     }
 
-    for (size_t i = 0; i < ia.num_entries; i++) {
-	r = elgamal_skip_decrypt_check_equality(server_keys, client_cipher[i], &matches);
-	if (!r) { return general_error("Failed skip decrypt check"); }
-    }
-    printf("# Matches = %*i\n", -3, matches);
-    printf("# Misses  = %*lu\n", -3, ia.num_entries - matches);
+    /* Elgamal-based Server side thresholding protocol */
+    r = elgamal_server_brute_force_thresholding(new_fd, server_keys, client_cipher, ia);
+    if (!r) { return general_error("Failed during elgamal_server_brute_force_thresholding"); }
     COLLECT_LOG_ENTRY(ia.secpar, ia.num_entries, total_bytes);
 
     BN_free(server_keys.pk->modulus);
@@ -61,11 +61,11 @@ server_run_pli_ca_elgamal_mh (
     BN_free(server_keys.sk->secret);
     free(server_keys.sk);
     for (size_t i = 0; i < ia.num_entries; i++) {
+	BN_free(bn_plain[i]);
 	BN_free(client_cipher[i].c1);
 	BN_free(client_cipher[i].c2);
 	BN_free(server_cipher[i].c1);
 	BN_free(server_cipher[i].c2);
-	BN_free(bn_plain[i]);
     }
     BN_CTX_free(ctx);
     if (!r) {
@@ -75,7 +75,7 @@ server_run_pli_ca_elgamal_mh (
 }
 
 int
-client_run_pli_ca_elgamal_mh (
+client_run_t_pli_elgamal_ah (
     int   sockfd,
     InputArgs ia)
 {
@@ -101,13 +101,14 @@ client_run_pli_ca_elgamal_mh (
 
     BIGNUM *bn_inv_plain[ia.num_entries];
     for (size_t i = 0; i < ia.num_entries; i++) {
-	bn_inv_plain[i] = BN_mod_inverse(NULL, bn_plain[i], server_pk.modulus, ctx);
-	if (!bn_inv_plain[i]) { r = 0; return openssl_error("Failed to invert bn_plain"); }
+	bn_inv_plain[i] = BN_dup(bn_plain[i]);
+	if (!bn_inv_plain[i]) { r = 0; return openssl_error("Failed to duplicate bn_plain"); }
+	BN_set_negative(bn_inv_plain[i], 1);
     }
     GamalCiphertext client_cipher[ia.num_entries];
     for (size_t i = 0; i < ia.num_entries; i++) {
 	/* Fn alloc's client_cipher fields */
-	r = elgamal_mh_encrypt(&client_cipher[i], server_pk, bn_inv_plain[i], ia.secpar);
+	r = elgamal_ah_encrypt(&client_cipher[i], server_pk, bn_inv_plain[i], ia.secpar);
 	if (!r) { return general_error("Error encrypting bn_inv_plain"); }
     }
     GamalCiphertext mul_res[ia.num_entries];
@@ -119,7 +120,17 @@ client_run_pli_ca_elgamal_mh (
     BIGNUM *bn_rand_mask[ia.num_entries];
     for (size_t i = 0; i < ia.num_entries; i++) {
 	bn_rand_mask[i] = BN_new();
-	r = generate_ec_equivalent_random_number(&bn_rand_mask[i], server_pk.modulus, ia.secpar);
+	switch (ia.secpar) {
+	case 1024:
+	    r = BN_rand_range_ex(bn_rand_mask[i], server_pk.modulus, 160, ctx);
+	    break;
+	case 2048:
+	    r = BN_rand_range_ex(bn_rand_mask[i], server_pk.modulus, 224, ctx);
+	    break;
+	default:
+	    r = BN_rand_range_ex(bn_rand_mask[i], server_pk.modulus, ia.secpar, ctx);
+	    break;
+	}
 	if (!r) { return openssl_error("Failed to gen rand_exp"); }
     }
     GamalCiphertext exp_res[ia.num_entries];
@@ -127,13 +138,13 @@ client_run_pli_ca_elgamal_mh (
 	/* exp_res alloc'd w/n fn */
 	r = elgamal_exp(&exp_res[i], mul_res[i], bn_rand_mask[i], server_pk.modulus);
 	if (!r) { return general_error("Failed to calculate cipher^mask"); }
+	r = send_msg(sockfd, exp_res[i].c1, "Client sent exp_res[i].c1:", Bignum);
+	if (!r) { return general_error("Failed to send exp_res[i].c1"); }
     }
-    r = elgamal_permute_ciphertexts(exp_res, (unsigned long)ia.num_entries);
-    if (!r) { return general_error("Failed to permute ciphertext entries"); }
-    for (size_t i = 0; i < ia.num_entries; i++) {
-	r = elgamal_send_ciphertext(sockfd, &exp_res[i], "Client sent:");
-	if (!r) { return general_error("Failed to send exp_res"); }
-    }
+
+    /* Elgamal-based client side brute force thresholding protocol */
+    r = elgamal_client_brute_force_thresholding(sockfd, server_pk, exp_res, ia);
+    if (!r) { return general_error("Failed during elgamal_client_brute_force_thresholding"); }
 
     BN_free(server_pk.modulus);
     BN_free(server_pk.generator);

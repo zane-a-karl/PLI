@@ -15,7 +15,7 @@ main (
     struct addrinfo *service_info;
     InputArgs ia;
 
-    r = parse_input_args(&ia, argc, argv);
+    r = parse_input_args(&ia, argc, argv, CLIENT);
     if (!r) { return general_error("Failed within parse_input_args"); }
     hardcode_socket_parameters(&service_info, PORT, CLIENT, ia.hostname);
     set_socket_and_connect(&sockfd, &service_info);

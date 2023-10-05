@@ -27,7 +27,7 @@ main (
     /* The port server accepts connections on, and the port client connects to at server. */
     const int PORT = 3490;
 
-    r = parse_input_args(&ia, argc, argv);
+    r = parse_input_args(&ia, argc, argv, SERVER);
     if (!r) { return general_error("Failed within parse_input_args"); }    
     srand (time(NULL));
     port_number = PORT + (rand() % PORT);

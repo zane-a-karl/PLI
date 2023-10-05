@@ -83,9 +83,9 @@ ecelgamal_mh_encrypt (
 
 int
 ecelgamal_mh_decrypt (
-    BIGNUM          *bn_plain,
-    EcGamalKeys          keys,
-    EcGamalCiphertext  cipher)
+    BIGNUM         *bn_plain,
+    EcGamalKeys         keys,
+    EcGamalCiphertext cipher)
 {
     int r = 1;
     EC_POINT *c1_x_sk;
@@ -97,8 +97,8 @@ ecelgamal_mh_decrypt (
     ecpt_plain = EC_POINT_new(keys.pk->group);
     if (!ecpt_plain) { r = 0; perror("Failed to make new ecpt"); return FAILURE; }
 
-    // Calculate c1 * keys.sk then invert
-    r = EC_POINT_mul(keys.pk->group, c1_x_sk, NULL, cipher.c1, keys.sk, ctx);
+    // Calculate c1 * keys.sk->secret then invert
+    r = EC_POINT_mul(keys.pk->group, c1_x_sk, NULL, cipher.c1, keys.sk->secret, ctx);
     if (!r) { perror("Failed to calc c1*sk"); return FAILURE; }
     r = EC_POINT_invert(keys.pk->group, c1_x_sk, ctx);
     if (!r) { perror("Failed to calc - (c1*sk)"); return FAILURE; }
@@ -135,7 +135,7 @@ ecelgamal_skip_decrypt_check_equality (
     if (!ecpt_plain) { r = 0; perror("Failed to make new ecpt"); return FAILURE; }
 
     // Calculate c1 * sk
-    r = EC_POINT_mul(keys.pk->group, c1_x_sk, NULL, cipher.c1, keys.sk, ctx);
+    r = EC_POINT_mul(keys.pk->group, c1_x_sk, NULL, cipher.c1, keys.sk->secret, ctx);
     if (!r) { perror("Failed to calc c1*sk"); return FAILURE; }
     // Compare c2 and (c1*sk)
     if (EC_POINT_cmp(keys.pk->group, cipher.c2, c1_x_sk, ctx) == 0) {

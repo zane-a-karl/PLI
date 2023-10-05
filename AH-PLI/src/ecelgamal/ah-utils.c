@@ -63,8 +63,8 @@ ecelgamal_ah_decrypt (
     ecpt_plain = EC_POINT_new(keys.pk->group);
     if (!ecpt_plain) { r = 0; perror("Failed to make new ecpt"); return FAILURE; }
 
-    // Calculate c1 * keys.sk then invert
-    r = EC_POINT_mul(keys.pk->group, c1_x_sk, NULL, cipher.c1, keys.sk, ctx);
+    // Calculate c1 * keys.sk->secret then invert
+    r = EC_POINT_mul(keys.pk->group, c1_x_sk, NULL, cipher.c1, keys.sk->secret, ctx);
     if (!r) { perror("Failed to calc c1*sk"); return FAILURE; }
     r = EC_POINT_invert(keys.pk->group, c1_x_sk, ctx);
     if (!r) { perror("Failed to calc - (c1*sk)"); return FAILURE; }
@@ -101,8 +101,8 @@ ecelgamal_skip_dlog_check_is_at_infinity (
     ecpt_plain = EC_POINT_new(keys.pk->group);
     if (!ecpt_plain) { r = 0; perror("Failed to make new ecpt"); return FAILURE; }
 
-    // Calculate c1 * keys.sk then invert
-    r = EC_POINT_mul(keys.pk->group, c1_x_sk, NULL, cipher.c1, keys.sk, ctx);
+    // Calculate c1 * keys.sk->secret then invert
+    r = EC_POINT_mul(keys.pk->group, c1_x_sk, NULL, cipher.c1, keys.sk->secret, ctx);
     if (!r) { perror("Failed to calc c1*sk"); return FAILURE; }
     r = EC_POINT_invert(keys.pk->group, c1_x_sk, ctx);
     if (!r) { perror("Failed to calc - (c1*sk)"); return FAILURE; }

@@ -1,10 +1,9 @@
 #ifndef _ECELGAMAL_UTILS_H_
 #define _ECELGAMAL_UTILS_H_
 
-#include <openssl/bn.h> // BIGNUM
-#include <openssl/ec.h> // EC_POINT
 #include <openssl/obj_mac.h> // NID's
 #include "../utils.h"
+
 
 /* Find Available Curves with `openssl ecparam -list_curves` */
 #define OPENSSL_160_BIT_CURVE NID_secp160r1
@@ -19,9 +18,13 @@ typedef struct EcGamalPk {
     BIGNUM   *p, *a, *b;
 } EcGamalPk;
 
+typedef struct EcGamalSk {
+    BIGNUM *secret;
+} EcGamalSk;
+
 typedef struct EcGamalKeys {
     EcGamalPk *pk;
-    BIGNUM    *sk;
+    EcGamalSk *sk;
 } EcGamalKeys;
 
 typedef struct EcGamalCiphertext {
@@ -55,9 +58,9 @@ ecelgamal_ptmul (
 
 int
 ecelgamal_permute_ciphertexts (
-    EcGamalCiphertext **ctxts,
-    unsigned long         len,
-    EC_GROUP           *group);
+    EcGamalCiphertext *ciphers,
+    unsigned long          len,
+    EC_GROUP            *group);
 
 int
 ecelgamal_send_pk (

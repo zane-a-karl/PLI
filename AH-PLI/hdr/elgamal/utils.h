@@ -57,46 +57,8 @@ elgamal_exp (
 
 int
 elgamal_permute_ciphertexts (
-    GamalCiphertext **ctxts,
-    unsigned long       len);
-
-int
-evaluate_polynomial_at(
-    BIGNUM **  share,
-    BIGNUM *coeffs[],
-    int        input,
-    int    threshold,
-    BIGNUM  *modulus);
-
-int
-elgamal_construct_shamir_shares (
-    BIGNUM **shares,
-    BIGNUM  *secret,
-    int     sec_par,    
-    int   threshold,
-    int  num_shares,
-    BIGNUM *modulus);
-
-int
-try_reconstruct_with (
-    BIGNUM **secret,
-    BIGNUM      **x,    
-    BIGNUM      **y,
-    int      length,
-    BIGNUM *modulus);
-
-int
-manual_popcount (
-    int input);
-
-int
-elgamal_reconstruct_shamir_secret (
-    BIGNUM **secret,
-    BIGNUM  **shares,
-    int   threshold,
-    int  num_shares,
-    int     bitmask,
-    BIGNUM *modulus);
+    GamalCiphertext *ciphers,
+    unsigned long        len);
 
 int
 elgamal_send_pk (

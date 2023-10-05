@@ -40,7 +40,7 @@ typedef struct LogItems {
     clock_gettime(CLOCK_MONOTONIC, &t2);				\
     sec = (t2.tv_sec - t1.tv_sec) + (t2.tv_nsec - t1.tv_nsec) / 1000000000.0; \
     fprintf(logfs, "%lu, ", secpar);					\
-    fprintf(logfs, "%d, ", n_entries);					\
+    fprintf(logfs, "%lu, ", n_entries);					\
     fprintf(logfs, "%" PRIu64 ", ", bytes);				\
     fprintf(logfs,"%f\n", sec);						\
     free(logfile);							\

@@ -3,11 +3,15 @@
 
 uint64_t total_bytes = 0;
 
+/**
+ *
+ */
 int
 parse_input_args (
-    InputArgs *ia,
-    int      argc,
-    char   **argv)
+    InputArgs        *ia,
+    int             argc,
+    char          **argv,
+    enum PartyType party)
 {
     int r;
     int c;
@@ -21,6 +25,14 @@ parse_input_args (
     ia->threshold = 0;
     ia->client_filename = "input/client.txt";
     ia->server_filename = "input/server.txt";
+    if (party == CLIENT) {
+	/* TODO: use stdlib system() to call ./setup_default_client_file.sh */
+	r = parse_file_for_num_entries(&ia->num_entries, ia->client_filename);
+    } else {
+	/* TODO: use stdlib system() to call ./setup_default_server_file.sh */	
+	r = parse_file_for_num_entries(&ia->num_entries, ia->server_filename);
+    }
+    if (!r) { return general_error("Failed to parse file for number of list entries"); }
 
     int option_index = 0;
     static struct option long_options[] =
@@ -30,13 +42,14 @@ parse_input_args (
 	    {"elgamal-flavor",     required_argument, NULL, 'e'},
 	    {"homomorphism-type",  required_argument, NULL, 'm'},
 	    {"security-parameter", required_argument, NULL, 'y'},
+	    {"list-length",        required_argument, NULL, 'n'},	    
 	    {"threshold",          required_argument, NULL, 't'},
 	    {"client-filename",    required_argument, NULL, 'c'},
 	    {"server-filename",    required_argument, NULL, 's'},
 	    {0, 0, 0, 0}
 	};
     while (1) {
-	c = getopt_long(argc, argv, "h:p:e:m:y:t:c:s:", long_options, &option_index);
+	c = getopt_long(argc, argv, "h:p:e:m:y:n:t:c:s:", long_options, &option_index);
 	/* Detect the end of the options. */
 	if (c == -1) { break; }
 	switch (c) {
@@ -72,6 +85,13 @@ parse_input_args (
 	    r = str_to_size_t(&ia->secpar, optarg);
 	    if (!r) { return general_error("Failed to parse secpar"); }
 	    break;
+        case 'n':
+	    printf("option -n with value `%s'\n", optarg);
+	    size_t n = 0;
+	    r = str_to_size_t(&n, optarg);
+	    if (!r) { return general_error("Failed to parse list_len"); }
+	    if (n != ia->num_entries) { return general_error(""); }
+	    break;	    
         case 't':
 	    printf("option -t with value `%s'\n", optarg);
 	    r = str_to_size_t(&ia->threshold, optarg);
@@ -94,6 +114,7 @@ parse_input_args (
 	    printf("--elgamal-flavor     -e <EG or ECEG>\n");
 	    printf("--homomorphism-type  -m <MH or AH>\n");
 	    printf("--security-parameter -y <security parameter>\n");
+	    printf("--list-len           -n <list-len>\n");	    
 	    printf("--threshold          -t <threshold>\n");
 	    printf("--client-filename    -c <client-filename>\n");
 	    printf("--server-filename    -s <server-filename>\n");
@@ -115,6 +136,9 @@ parse_input_args (
     if (ia->secpar < 8) {
 	return general_error("Failed provide meaningful security parameter");
     }
+    if (ia->threshold > ia->num_entries || ia->threshold < 1) {
+	return general_error("Failed to set meaningful threshold");
+    }    
     if ( ia->eflav == ECEG && ia->htype == MH ) {
 	return general_error("Library does not yet implement ECEG with MH");
     }
@@ -122,6 +146,9 @@ parse_input_args (
     return SUCCESS;
 }
 
+/**
+ *
+ */
 int
 str_to_pli_method (
     enum PliMethod *pm,
@@ -193,6 +220,9 @@ str_to_elgamal_flavor (
     return SUCCESS;
 }
 
+/**
+ *
+ */
 int
 str_to_size_t (
     size_t *output,
@@ -230,6 +260,9 @@ openssl_error (
     return FAILURE;
 }
 
+/**
+ *
+ */
 int
 log_base2 (
     int sec_par)
@@ -243,6 +276,9 @@ log_base2 (
 }
 
 // get sockaddr, IPv4 or IPv6:
+/**
+ *
+ */
 void *
 get_in_addr (
     struct sockaddr *sa)
@@ -253,6 +289,9 @@ get_in_addr (
     return &( ((struct sockaddr_in6*)sa)->sin6_addr );
 }
 
+/**
+ *
+ */
 void
 sigchld_handler (
     int s)
@@ -263,6 +302,9 @@ sigchld_handler (
     errno = saved_errno;
 }
 
+/**
+ *
+ */
 void
 hardcode_socket_parameters (
     struct addrinfo **service_info,
@@ -286,6 +328,9 @@ hardcode_socket_parameters (
     }
 }
 
+/**
+ *
+ */
 void
 set_socket_and_bind (
     int    *socket_file_descriptor,
@@ -322,6 +367,9 @@ set_socket_and_bind (
     }
 }
 
+/**
+ *
+ */
 void
 set_socket_and_connect (
     int    *socket_file_descriptor,
@@ -395,6 +443,9 @@ reap_all_dead_processes (
     }
 }
 
+/**
+ *
+ */
 int
 accept_connection (
     int listener_sockfd)
@@ -429,8 +480,8 @@ accept_connection (
  */
 int
 generate_list_entries (
-    uint64_t    **entries,
-    int       num_entries)
+    uint64_t **entries,
+    int    num_entries)
 {
     srand (time(NULL));
     for (int i = 0; i < num_entries-1 ; i++) {
@@ -442,10 +493,13 @@ generate_list_entries (
     return SUCCESS;
 }
 
+/**
+ *
+ */
 int
 parse_file_for_num_entries (
-    int       *num_entries,
-    char         *filename)
+    size_t *num_entries,
+    char      *filename)
 {
     FILE *fin;
     int c, r, i = 0;
@@ -473,6 +527,9 @@ parse_file_for_num_entries (
     return SUCCESS;
 }
 
+/**
+ *
+ */
 int
 parse_file_for_list_entries (
     BIGNUM      **entries,
@@ -546,7 +603,9 @@ cstr_to_hex (
     return SUCCESS;
 }
 
-
+/**
+ *
+ */
 char *
 pad_leading_zeros (
     char *msg)
@@ -570,6 +629,9 @@ pad_leading_zeros (
     return buffer;
 }
 
+/**
+ *
+ */
 int
 serialize_bignum (
     char   **serialized,
@@ -585,6 +647,9 @@ serialize_bignum (
     return SUCCESS;
 }
 
+/**
+ *
+ */
 int
 serialize_ecpoint (
     char   **serialized,
@@ -602,6 +667,9 @@ serialize_ecpoint (
     return SUCCESS;
 }
 
+/**
+ *
+ */
 int
 serialize_int (
     char **serialized,
@@ -618,6 +686,9 @@ serialize_int (
     return SUCCESS;
 }
 
+/**
+ *
+ */
 int
 serialize_size_t (
     char **serialized,
@@ -634,6 +705,9 @@ serialize_size_t (
     return SUCCESS;
 }
 
+/**
+ *
+ */
 int
 serialize_uchar (
     char  **serialized,
@@ -648,6 +722,9 @@ serialize_uchar (
     return SUCCESS;
 }
 
+/**
+ *
+ */
 int
 send_msg_length (
     int file_descriptor,
@@ -656,6 +733,7 @@ send_msg_length (
     int r;
     char *fixed_buf;
     unsigned long fixed_buf_num_bytes;
+    size_t bytes_sent = 0;
 
     /* Serialize UL length */
     fixed_buf = calloc(FIXED_LEN, sizeof(char));
@@ -670,8 +748,11 @@ send_msg_length (
 	return general_error("Increase fixed length");
     }
     /* Send UL length */
-    r = send(file_descriptor, fixed_buf, FIXED_LEN, 0);
-    if (r == -1) { r = 0; return general_error("Failed to send message len"); }
+    while (bytes_sent < FIXED_LEN) {
+	r = send(file_descriptor, fixed_buf + bytes_sent, FIXED_LEN - bytes_sent, 0);
+	if (r == -1) { r = 0; return general_error("Failed to send message len"); }
+	bytes_sent += r;
+    }
     free(fixed_buf);
     if (!r) {
 	return FAILURE;
@@ -679,6 +760,9 @@ send_msg_length (
     return SUCCESS;
 }
 
+/**
+ *
+ */
 int
 send_msg (
     int    file_descriptor,
@@ -689,32 +773,36 @@ send_msg (
 {
     int r;
     char *buf;
-    unsigned long buf_num_bytes;
+    size_t buf_num_bytes;
     va_list args_ptr;
-    size_t len;
+    size_t bytes_sent = 0;
 
     /* Serialize fns alloc mem for buf */
     switch (mtype) {
     case Integer:
 	r = serialize_int(&buf, (int *)msg);
+	buf_num_bytes = strnlen(buf, MAX_MSG_LEN);
 	break;
     case SizeT:
 	r = serialize_size_t(&buf, (size_t *)msg);
+	buf_num_bytes = strnlen(buf, MAX_MSG_LEN);
 	break;
     case UnsignedChar:
 	va_start(args_ptr, mtype);
-	len = va_arg(args_ptr, size_t);
-	r = serialize_uchar(&buf, (unsigned char *)msg, len);
+	buf_num_bytes = va_arg(args_ptr, size_t);
+	r = serialize_uchar(&buf, (unsigned char *)msg, buf_num_bytes);
 	va_end(args_ptr);
 	break;
     case Bignum:
 	r = serialize_bignum(&buf, (BIGNUM *)msg);
+	buf_num_bytes = strnlen(buf, MAX_MSG_LEN);
 	break;
     case Ecpoint:
 	va_start(args_ptr, mtype);
 	EC_GROUP *g = va_arg(args_ptr, EC_GROUP *);
 	r = serialize_ecpoint(&buf, (EC_POINT *)msg, g);
 	va_end(args_ptr);
+	buf_num_bytes = strnlen(buf, MAX_MSG_LEN);
 	break;
     default:
 	r = 0;
@@ -722,12 +810,14 @@ send_msg (
     }
     if (!r) { return general_error("Failed to serialize msg"); }
     // Pre-send the real msg's length first
-    buf_num_bytes = strnlen(buf, MAX_MSG_LEN);
     r = send_msg_length(file_descriptor, buf_num_bytes);
     if (r == -1) { r = 0; return general_error("Failed to send msg length"); }
     // Now send the real msg
-    r = send(file_descriptor, buf, buf_num_bytes, 0);
-    if (r == -1) { r = 0; return general_error("Failed to send msg"); }
+    while (bytes_sent < buf_num_bytes) {
+	r = send(file_descriptor, buf + bytes_sent, buf_num_bytes - bytes_sent, 0);
+	if (r == -1) { r = 0; return general_error("Failed to send msg"); }
+	bytes_sent += r;
+    }
 
     if (mtype == UnsignedChar) {
 	printf("%s ", conf_str);
@@ -746,6 +836,9 @@ send_msg (
     return SUCCESS;
 }
 
+/**
+ *
+ */
 int
 recv_msg_length (
     int   file_descriptor,
@@ -756,13 +849,16 @@ recv_msg_length (
 
     fixed_buf = calloc(FIXED_LEN+1, sizeof(char));
     r = recv(file_descriptor, fixed_buf, FIXED_LEN, 0);
-    if (r == -1) { return general_error("Failed to recv message len"); }
+    if (r == -1) { r = 0; return general_error("Failed to recv message len"); }
     r = sscanf(fixed_buf, "%lu", length);
-    if (r == EOF) { return general_error("Failed to sscanf msg_buffer_len"); }
+    if (r == EOF) { r = 0; return general_error("Failed to sscanf msg_buffer_len"); }
     free(fixed_buf);
     return SUCCESS;
 }
 
+/**
+ *
+ */
 int
 deserialize_int (
     int  *msg,
@@ -776,6 +872,9 @@ deserialize_int (
     return SUCCESS;
 }
 
+/**
+ *
+ */
 int
 deserialize_size_t (
     size_t *msg,
@@ -789,12 +888,15 @@ deserialize_size_t (
     return SUCCESS;
 }
 
+/**
+ *
+ */
 int
 deserialize_uchar (
     unsigned char **msg,
-    char           *buf)
+    char           *buf,
+    size_t          len)
 {
-    int len = strnlen(buf, MAX_MSG_LEN);
     for (int i = 0; i < len; i++) {
 	/* snprintf((char *)&(*msg)[i], len, "%02x", buf[i]);	 */
 	(*msg)[i] = (unsigned char)buf[i];
@@ -802,6 +904,9 @@ deserialize_uchar (
     return SUCCESS;
 }
 
+/**
+ *
+ */
 int
 deserialize_bignum (
     BIGNUM **msg,
@@ -815,6 +920,9 @@ deserialize_bignum (
     return SUCCESS;
 }
 
+/**
+ *
+ */
 int
 deserialize_ecpoint (
     EC_POINT  **msg,
@@ -831,6 +939,9 @@ deserialize_ecpoint (
     return SUCCESS;
 }
 
+/**
+ *
+ */
 int
 recv_msg (
     int       file_descriptor,
@@ -846,7 +957,7 @@ recv_msg (
 
     buf = calloc(MAX_MSG_LEN, sizeof(char));
     r = recv_msg_length(file_descriptor, &buf_num_bytes);
-    if (r == -1) { r = 0; return general_error("Failed to recv msg length"); }
+    if (!r) { r = 0; return general_error("Failed to recv msg length"); }
     r = recv(file_descriptor, buf, buf_num_bytes, 0);
     if ( r  == -1 ) { r = 0; return general_error("Failed to recv msg"); }
     buf[r] = '\0';
@@ -869,7 +980,7 @@ recv_msg (
 	r = deserialize_size_t((size_t *)msg, buf);
 	break;
     case UnsignedChar:
-	r = deserialize_uchar((unsigned char **)msg, buf);
+	r = deserialize_uchar((unsigned char **)msg, buf, buf_num_bytes);
 	break;
     case Bignum:
 	r = deserialize_bignum((BIGNUM **)msg, buf);
@@ -903,12 +1014,14 @@ hash (
     void            *input,
     char    *hash_alg_name,
     size_t hash_digest_len,
-    enum MessageType mtype)
+    enum MessageType mtype,
+    ...)
 {
     int r;
-    int data_len;
+    size_t data_len = 0;
     unsigned char *data;
     unsigned int output_len;
+    va_list args_ptr;
 
     EVP_MD_CTX *ctx = EVP_MD_CTX_new();
     if (!ctx) { return openssl_error("Failed to alloc ctx"); }
@@ -920,16 +1033,30 @@ hash (
     /* Parse 'void *input' into 'unsigned char *data' */
     switch (mtype) {
     case Bignum:
-	data_len = EVP_MAX_MD_SIZE;
+	data_len = BN_num_bytes((BIGNUM *)input);
 	data = calloc(data_len, sizeof(*data));
 	r = BN_bn2bin((BIGNUM *)input, data);
 	if (!r) { return openssl_error("Failed to bn2bin input"); }
 	break;
+    case Ecpoint:
+	va_start(args_ptr, mtype);	
+	EC_GROUP *group = va_arg(args_ptr, EC_GROUP *);
+	/* Calling this fn with NULL in the output argument buf gives us the length */
+	data_len = EC_POINT_point2oct(group, (EC_POINT *)input,
+				      POINT_CONVERSION_UNCOMPRESSED,
+				      NULL, 0, NULL);
+	data = calloc(data_len, sizeof(*data));	
+	data_len = EC_POINT_point2oct(group, (EC_POINT *)input,
+				      POINT_CONVERSION_UNCOMPRESSED,
+				      data, data_len, NULL);
+	va_end(args_ptr);		
+	if (data_len == 0) { return openssl_error("Failed to point2oct input"); }
+	break;	
     default:
 	break;
     }
 
-    r = EVP_DigestUpdate(ctx, data, strlen((char *)data));
+    r = EVP_DigestUpdate(ctx, data, data_len); /* strlen((char *)data)); */
     if (!r) { return openssl_error("Failed to hash data"); }
 
     *output = calloc(hash_digest_len, sizeof(unsigned char));
@@ -1056,4 +1183,249 @@ symmetric_decrypt (
 
     EVP_CIPHER_CTX_free(ctx);
     return SUCCESS;
+}
+
+/**
+ *
+ */
+int
+evaluate_polynomial_at(
+    BIGNUM   **share,
+    BIGNUM *coeffs[],
+    int        input,
+    int    threshold,
+    BIGNUM  *modulus)
+{
+    int r;
+    BIGNUM *x;
+    BN_CTX *ctx = BN_CTX_new();
+    x = BN_new();
+    r = BN_set_word(x, (unsigned long)input);
+    if (!r) { return openssl_error("Failed to initialize input x"); }
+    *share = BN_dup(coeffs[threshold-1]);
+    if (!(*share)) { return openssl_error("Failed to alloc share"); }
+    /* Stop before 0 so prevent undef behav */
+    for (int i = threshold - 1; i > 0; i--) {
+	r = BN_mod_mul(*share, *share, x, modulus, ctx);
+	if (!r) {return openssl_error("Failed share * x"); }
+	r = BN_mod_add(*share, *share, coeffs[i - 1], modulus, ctx);
+	if (!r) {return openssl_error("Failed share + coeffs[i - 1]"); }
+    }
+    BN_free(x);
+    BN_CTX_free(ctx);
+    return SUCCESS;
+}
+
+/**
+ * Generates 'n'='num_shares' shares of 'secret' using a (t, n)-SSS Scheme ('t'='threshold').
+ * Shares are created as poly(1..n+1)
+ * @param Output array to hold shares
+ * @param Secret to share
+ * @param threshold
+ * @param number of shares
+ * @param group order
+ */
+int
+construct_shamir_shares (
+    BIGNUM **shares,
+    BIGNUM  *secret,
+    BIGNUM *modulus,
+    InputArgs    ia)
+{
+    int r;
+    BIGNUM *coeffs[ia.threshold];
+    BN_CTX *ctx = BN_CTX_new();
+
+    coeffs[0] = BN_dup(secret);
+    for (int i = 1; i < ia.threshold; i++) {
+	coeffs[i] = BN_new();
+	if (!coeffs[i]) { return openssl_error("Failed to alloc coeffs"); }
+	r = BN_rand_range_ex(coeffs[i], modulus, ia.secpar, ctx);
+	if (!r) { return openssl_error("Failed to gen random coefficients"); }
+    }
+    for (int i = 0; i < ia.num_entries; i++) {
+	/* Fn alloc's shares[i] */
+	r = evaluate_polynomial_at(&shares[i], coeffs, i + 1, ia.threshold, modulus);
+	if (!r) { return general_error("Failed evaluate_polynomial_at i+1"); }
+    }
+
+    BN_CTX_free(ctx);
+    return SUCCESS;
+}
+
+int
+try_reconstruct_with (
+    BIGNUM **secret,
+    BIGNUM      **x,
+    BIGNUM      **y,
+    int      length,
+    BIGNUM *modulus)
+{
+    int r;
+    BIGNUM *sum_accum;
+    BIGNUM *mul_accum;
+    BIGNUM *tmp;
+    BN_CTX *ctx = BN_CTX_new();
+    sum_accum = BN_new();
+    mul_accum = BN_new();
+    tmp = BN_new();
+    BN_zero(sum_accum);
+    for (int i = 0; i < length; i++) {
+	BN_one(mul_accum);
+	for (int j = 0; j < length; j++) {
+	    if (i == j) {
+		continue;
+	    }
+	    r = BN_mod_sub(tmp, x[j], x[i], modulus, ctx);
+	    BN_mod_inverse(tmp, tmp, modulus, ctx);
+	    r = BN_mod_mul(tmp, x[j], tmp, modulus, ctx);
+	    r = BN_mod_mul(mul_accum, mul_accum, tmp, modulus, ctx);
+	}
+	r = BN_mod_mul(mul_accum, y[i], mul_accum, modulus, ctx);
+	r = BN_mod_add(sum_accum, sum_accum, mul_accum, modulus, ctx);
+    }
+    if (!r) { return openssl_error("An error occurred be more specific"); }
+    (*secret) = BN_dup(sum_accum);
+    if (!(*secret)) { return openssl_error("Failed to dup sum_accum"); }
+
+    BN_free(sum_accum);
+    BN_free(mul_accum);
+    BN_free(tmp);
+    BN_CTX_free(ctx);
+    return SUCCESS;
+}
+
+/**
+ * @param
+ * @param the attempted reconstructed secret
+ * @param the shares given
+ * @param the threshold
+ * @param the number of shares
+ * @param an array containing the indexes of the nCt combination of shares we are trying
+ * @param the field order
+ */
+int
+reconstruct_shamir_secret (
+    BIGNUM         **secret,
+    BIGNUM         **shares,
+    size_t        threshold,
+    size_t subset_indexes[],
+    BIGNUM         *modulus)
+{
+    int r;
+    size_t t = threshold;
+    size_t i;
+    BIGNUM *save_x[threshold];
+    BIGNUM *save_y[threshold];
+    BN_CTX *ctx = BN_CTX_new();
+
+    for (i = 0; i < t; i++) {
+	save_x[i] = BN_new();
+	save_y[i] = BN_new();
+	BN_set_word(save_x[i], subset_indexes[i] + 1);
+	BN_copy(save_y[i], shares[subset_indexes[i]]);
+    }
+    for (i = 0; i < t; i++) {
+	printf("x = "); BN_print_fp(stdout, save_x[i]);
+	printf(", y = "); BN_print_fp(stdout, save_y[i]); printf("\n");
+    }
+    /* Fn alloc's secret */
+    r = try_reconstruct_with(secret, save_x, save_y, t, modulus);
+    if (!r) { return openssl_error("Failed during try_reconstruct_with"); }
+    for (i = 0; i < t; i++) {
+	BN_free(save_x[i]);
+	BN_free(save_y[i]);
+    }
+    BN_CTX_free(ctx);
+    return SUCCESS;
+}
+
+/**
+ *
+ */
+int
+iteratively_check_all_subsets (
+    unsigned char *secret_digest,
+    BIGNUM             *shares[],
+    InputArgs                 ia,
+    BIGNUM              *modulus)
+{
+    int r;
+    const size_t n = ia.num_entries;
+    const size_t t = ia.threshold;
+    /* Array to store indices of selected elements */
+    size_t subset_indexes[t];
+
+    /* Initialize the first subset as [0, 1, 2, ..., t-1] */
+    for (size_t i = 0; i < t; i++) {
+        subset_indexes[i] = i;
+    }
+
+    /* START: Check the current subset for validity */
+    BIGNUM *possible_secret;
+    unsigned char *possible_secret_digest;
+    size_t digest_len;
+    while (subset_indexes[0] < n - t + 1) {
+
+	for (size_t i = 0; i < t; i++) {
+	    printf((i == t-1 ? "%zu:\n" : "%zu, "), subset_indexes[i]);
+	}	
+	/* Fn alloc's possible_secret */
+	r = reconstruct_shamir_secret(&possible_secret, shares, ia.threshold,
+				      subset_indexes, modulus);
+	if (!r) { return general_error("Failed to reconstruct shamir secret"); }
+	switch (ia.secpar) {
+	case 1024:
+	    digest_len = SHA_DIGEST_LENGTH;
+	    /* Fn alloc's possible_secret_digest */
+	    r = hash(&possible_secret_digest, possible_secret, "SHA1", digest_len, Bignum);
+	    break;
+	case 2048:
+	    digest_len = SHA224_DIGEST_LENGTH;
+	    r = hash(&possible_secret_digest, possible_secret, "SHA224", digest_len, Bignum);
+	    break;
+	default:
+	    digest_len = SHA256_DIGEST_LENGTH;
+	    r = hash(&possible_secret_digest, possible_secret, "SHA256", digest_len, Bignum);
+	    break;
+	}
+	if (!r) { return openssl_error("Failed to hash poissble_secret"); }
+	printf("------------------\n");
+	for (size_t j = 0; j < digest_len; j++)
+	    printf("%02x ", secret_digest[j]);
+	printf("\n");
+	for (size_t j = 0; j < digest_len; j++)
+	    printf("%02x ", possible_secret_digest[j]);
+	printf("\n\n\n");
+	if (0 == memcmp(secret_digest, possible_secret_digest, digest_len)) {
+	    printf("SUCCESS :)\n");
+	    BN_free(possible_secret);
+	    free(possible_secret_digest);	    
+	    return SUCCESS;
+	}
+	BN_free(possible_secret);
+	free(possible_secret_digest);
+	/* END: Check the current subset viability */
+
+        /* Generate the next subset */
+        ssize_t i = t - 1;
+        while (i >= 0 && subset_indexes[i] == i + n - t) {
+            i--;
+        }
+
+	/* All subsets generated */	
+        if (i < 0) {
+	    printf("FAILURE :(\n");
+	    printf("Threshold unmet\n");	    	    
+            return FAILURE;
+        }
+
+        subset_indexes[i]++;
+
+        /* Update the rest of the indices */
+        for (size_t j = i + 1; j < t; j++) {
+            subset_indexes[j] = subset_indexes[j - 1] + 1;
+        }
+    }
+    return FAILURE;
 }

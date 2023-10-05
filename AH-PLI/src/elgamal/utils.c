@@ -221,8 +221,8 @@ elgamal_exp (
 
 int
 elgamal_permute_ciphertexts (
-    GamalCiphertext **ctxts,
-    unsigned long       len)
+    GamalCiphertext *ciphers,
+    unsigned long        len)
 {
     int r;
     unsigned long rand;
@@ -241,200 +241,19 @@ elgamal_permute_ciphertexts (
 	r = BN_rand_range(bn_rand, bn_len);
 	if (!r) {return openssl_error("Failed bn_rand_range()"); }
 	rand = BN_get_word(bn_rand);
-	BN_copy(bn_tmp_c1, (*ctxts)[i].c1);
-	BN_copy(bn_tmp_c2, (*ctxts)[i].c2);
+	BN_copy(bn_tmp_c1, ciphers[i].c1);
+	BN_copy(bn_tmp_c2, ciphers[i].c2);
 
-	BN_copy((*ctxts)[i].c1, (*ctxts)[rand].c1);
-	BN_copy((*ctxts)[i].c2, (*ctxts)[rand].c2);
+	BN_copy(ciphers[i].c1, ciphers[rand].c1);
+	BN_copy(ciphers[i].c2, ciphers[rand].c2);
 
-	BN_copy((*ctxts)[rand].c1, bn_tmp_c1);
-	BN_copy((*ctxts)[rand].c2, bn_tmp_c2);
+	BN_copy(ciphers[rand].c1, bn_tmp_c1);
+	BN_copy(ciphers[rand].c2, bn_tmp_c2);
     }
     BN_free(bn_tmp_c1);
     BN_free(bn_tmp_c2);
     BN_free(bn_len);
     BN_free(bn_rand);
-    BN_CTX_free(ctx);
-    return SUCCESS;
-}
-
-/**
- *
- */
-int
-evaluate_polynomial_at(
-    BIGNUM   **share,
-    BIGNUM *coeffs[],
-    int        input,
-    int    threshold,
-    BIGNUM  *modulus)
-{
-    int r;
-    BIGNUM *x;
-    BN_CTX *ctx = BN_CTX_new();
-    x = BN_new();
-    r = BN_set_word(x, (unsigned long)input);
-    if (!r) { return openssl_error("Failed to initialize input x"); }    
-    *share = BN_dup(coeffs[threshold-1]);
-    if (!(*share)) { return openssl_error("Failed to alloc share"); }    
-    /* Stop before 0 so prevent undef behav */
-    for (int i = threshold - 1; i > 0; i--) {
-	r = BN_mod_mul(*share, *share, x            , modulus, ctx);
-	if (!r) {return openssl_error("Failed share * x"); }	
-	r = BN_mod_add(*share, *share, coeffs[i - 1], modulus, ctx);
-	if (!r) {return openssl_error("Failed share + coeffs[i - 1]"); }	
-    }
-    BN_free(x);
-    BN_CTX_free(ctx);
-    return SUCCESS;
-}
-
-/**
- * Generates 'n'='num_shares' shares of 'secret' using a (t, n)-SSS Scheme ('t'='threshold').
- * Shares are created as poly(1..n+1)
- * @param Output array to hold shares
- * @param Secret to share
- * @param threshold
- * @param number of shares
- * @param group order
- */
-int
-elgamal_construct_shamir_shares (
-    BIGNUM **shares,
-    BIGNUM  *secret,
-    int     sec_par,
-    int   threshold,
-    int  num_shares,
-    BIGNUM *modulus)
-{
-    int r;
-    BIGNUM *coeffs[threshold];
-    BN_CTX *ctx = BN_CTX_new();
-
-    coeffs[0] = BN_dup(secret);
-    for (int i = 1; i < threshold; i++) {
-	coeffs[i] = BN_new();
-	if (!coeffs[i]) { return openssl_error("Failed to alloc coeffs"); }
-	r = BN_rand_range_ex(coeffs[i], modulus, sec_par, ctx);
-	if (!r) { return openssl_error("Failed to gen random coefficients"); }
-    }
-    for (int i = 0; i < num_shares; i++) {
-	/* Fn alloc's shares[i] */
-	r = evaluate_polynomial_at(&shares[i], coeffs, i + 1, threshold, modulus);
-	if (!r) { return general_error("Failed evaluate_polynomial_at i+1"); }
-    }
-
-    BN_CTX_free(ctx);
-    return SUCCESS;
-}
-
-int
-try_reconstruct_with (
-    BIGNUM **secret,
-    BIGNUM      **x,
-    BIGNUM      **y,
-    int      length,
-    BIGNUM *modulus)
-{
-    int r;
-    BIGNUM *sum_accum;
-    BIGNUM *mul_accum;
-    BIGNUM *tmp;
-    BN_CTX *ctx = BN_CTX_new();
-    sum_accum = BN_new();
-    mul_accum = BN_new();
-    tmp = BN_new();
-    BN_zero(sum_accum);
-    for (int i = 0; i < length; i++) {
-	BN_one(mul_accum);
-	for (int j = 0; j < length; j++) {
-	    if (i == j) {
-		continue;
-	    }
-	    r = BN_mod_sub(tmp, x[j], x[i], modulus, ctx);
-	    BN_mod_inverse(tmp, tmp, modulus, ctx);
-	    r = BN_mod_mul(tmp, x[j], tmp, modulus, ctx);
-	    r = BN_mod_mul(mul_accum, mul_accum, tmp, modulus, ctx);
-	}
-	r = BN_mod_mul(mul_accum, y[i], mul_accum, modulus, ctx);
-	r = BN_mod_add(sum_accum, sum_accum, mul_accum, modulus, ctx);
-    }
-    if (!r) { return openssl_error("An error occurred be more specific"); }
-    (*secret) = BN_dup(sum_accum);
-
-    BN_free(sum_accum);
-    BN_free(mul_accum);
-    BN_free(tmp);
-    BN_CTX_free(ctx);
-    return SUCCESS;
-}
-
-int
-manual_popcount (
-    int input)
-{
-    int popcount = 0;
-    int n = 8 * sizeof(int);
-    for (int i = 0; i < n; i++) {
-	if ( (input >> i) & 1 ) {
-	    popcount++;
-	}
-    }
-    return popcount;
-}
-
-/**
- * @param
- * @param the attempted reconstructed secret
- * @param the shares given
- * @param the threshold
- * @param the number of shares
- * @param the bitmask representing the index of the nCt combination of shares we are trying
- * @param the field order
- */
-int
-elgamal_reconstruct_shamir_secret (
-    BIGNUM **secret,
-    BIGNUM **shares,
-    int   threshold,
-    int  num_shares,
-    int     bitmask,
-    BIGNUM *modulus)
-{
-    int r;
-    unsigned int n = num_shares;
-    unsigned int t = threshold;
-    unsigned long i;
-    unsigned int save_i;
-    BIGNUM *save_x[threshold];
-    BIGNUM *save_y[threshold];
-    BN_CTX *ctx = BN_CTX_new();
-    for (i = 0; i < t; i++) {
-	save_x[i] = BN_new();
-	save_y[i] = BN_new();
-    }
-    save_i = 0;
-    for (i = 0; i < n; i++) {
-	/* printf("%i", (bitmask >> i) & 1); */
-	if ((bitmask >> i) & 1) {
-	    printf("%lu ", i);
-	    BN_set_word(save_x[save_i], i + 1);
-	    BN_copy(save_y[save_i], shares[i]);
-	    save_i++;
-	}
-    }
-    printf(": \n");
-    for (int i = 0; i < save_i; i++) {
-	printf("x = "); BN_print_fp(stdout, save_x[i]);
-	printf(", y = "); BN_print_fp(stdout, save_y[i]); printf("\n");
-    }
-    /* Fn alloc's secret */
-    r = try_reconstruct_with(secret, save_x, save_y, t, modulus);
-    if (!r) { return openssl_error("Failed during try_reconstruct_with"); }
-    for (i = 0; i < t; i++) {
-	BN_free(save_x[i]);
-	BN_free(save_y[i]);
-    }
     BN_CTX_free(ctx);
     return SUCCESS;
 }

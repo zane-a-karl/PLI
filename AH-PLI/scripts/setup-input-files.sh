@@ -41,3 +41,11 @@ val=$(echo "$len - 1 + $secpar" | bc)
 rand_val=$(echo "$((RANDOM%$len + $len + 1)) + $secpar" | bc)
 echo "$val]" >> "$client_file";
 echo "$rand_val]" >> "$server_file";
+
+tmp_file="input/tmp.txt"
+# Remove '\'s
+awk '{ gsub(/\\/, "") } 1' $client_file > $tmp_file && mv $tmp_file $client_file
+awk '{ gsub(/\\/, "") } 1' $server_file > $tmp_file && mv $tmp_file $server_file
+# Remove '\n's
+awk '{ printf "%s", $0 } END { print "" }' $client_file > $tmp_file && mv $tmp_file $client_file
+awk '{ printf "%s", $0 } END { print "" }' $server_file > $tmp_file && mv $tmp_file $server_file

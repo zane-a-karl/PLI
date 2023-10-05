@@ -53,9 +53,10 @@ ecelgamal_generate_keys (
     BN_print_fp(stdout, keys->pk->order);
     printf("\n");
     // Initialize sk
-    keys->sk = BN_new();
-    if (!keys->sk) { r = 0; perror("Failed to alloc keys->sk"); return FAILURE; }
-    r = BN_rand_range_ex(keys->sk, keys->pk->order, sec_par, ctx);
+    keys->sk = calloc(1, sizeof(EcGamalPk));    
+    keys->sk->secret = BN_new();
+    if (!keys->sk->secret) { r = 0; perror("Failed to alloc keys->sk->secret"); return FAILURE; }
+    r = BN_rand_range_ex(keys->sk->secret, keys->pk->order, sec_par, ctx);
     if (!r) { perror("Failed to generate random sk"); return FAILURE; }
     g = EC_GROUP_get0_generator(keys->pk->group);
     keys->pk->generator = EC_POINT_dup(g, keys->pk->group);
@@ -64,7 +65,7 @@ ecelgamal_generate_keys (
     keys->pk->point = EC_POINT_new(keys->pk->group);
     if (!keys->pk->point) { r = 0; perror("Failed to alloc pk point"); return FAILURE; }
     // calc point = G(sk) + 0*0
-    r = EC_POINT_mul(keys->pk->group, keys->pk->point, keys->sk, NULL, NULL, ctx);
+    r = EC_POINT_mul(keys->pk->group, keys->pk->point, keys->sk->secret, NULL, NULL, ctx);
     if (!keys->pk->point) { r = 0; perror("Failed to get pk point"); return FAILURE; }
     // Initialize curve params p, a, and b
     keys->pk->p = BN_new();
@@ -150,9 +151,9 @@ ecelgamal_ptmul (
 
 int
 ecelgamal_permute_ciphertexts (
-    EcGamalCiphertext **ctxts,
-    unsigned long         len,
-    EC_GROUP           *group)
+    EcGamalCiphertext *ciphers,
+    unsigned long          len,
+    EC_GROUP            *group)
 {
     int r;
     unsigned long rand;
@@ -171,14 +172,14 @@ ecelgamal_permute_ciphertexts (
 	r = BN_rand_range(bn_rand, bn_len);
 	if (!r) {return openssl_error("Failed bn_rand_range()"); }
 	rand = BN_get_word(bn_rand);
-	EC_POINT_copy(bn_tmp_c1, (*ctxts)[i].c1);
-	EC_POINT_copy(bn_tmp_c2, (*ctxts)[i].c2);
+	EC_POINT_copy(bn_tmp_c1, ciphers[i].c1);
+	EC_POINT_copy(bn_tmp_c2, ciphers[i].c2);
 
-	EC_POINT_copy((*ctxts)[i].c1, (*ctxts)[rand].c1);
-	EC_POINT_copy((*ctxts)[i].c2, (*ctxts)[rand].c2);
+	EC_POINT_copy(ciphers[i].c1, ciphers[rand].c1);
+	EC_POINT_copy(ciphers[i].c2, ciphers[rand].c2);
 
-	EC_POINT_copy((*ctxts)[rand].c1, bn_tmp_c1);
-	EC_POINT_copy((*ctxts)[rand].c2, bn_tmp_c2);
+	EC_POINT_copy(ciphers[rand].c1, bn_tmp_c1);
+	EC_POINT_copy(ciphers[rand].c2, bn_tmp_c2);
     }
     EC_POINT_free(bn_tmp_c1);
     EC_POINT_free(bn_tmp_c2);

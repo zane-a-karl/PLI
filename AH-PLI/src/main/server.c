@@ -16,7 +16,7 @@ main (
     struct addrinfo *service_info; /* Field values for port "service" */
     InputArgs ia;
 
-    r = parse_input_args(&ia, argc, argv);
+    r = parse_input_args(&ia, argc, argv, SERVER);
     if (!r) { return general_error("Failed within parse_input_args"); }
     hardcode_socket_parameters(&service_info, PORT, SERVER, NULL);
     set_socket_and_bind(&sockfd, &service_info);

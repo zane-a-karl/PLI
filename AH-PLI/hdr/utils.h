@@ -11,6 +11,7 @@
 #include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/sha.h>
 #include <signal.h>     // sigemptyset()
 #include <stdarg.h>     // va_start(), va_arg(), va_end()
 #include <stdio.h>
@@ -75,6 +76,7 @@ typedef struct InputArgs {
     enum ElgamalFlavor    eflav;
     enum HomomorphismType htype;
     size_t               secpar;
+    size_t          num_entries;    
     size_t            threshold;
     char       *client_filename;
     char       *server_filename;
@@ -82,9 +84,10 @@ typedef struct InputArgs {
 
 int
 parse_input_args (
-    InputArgs *ia,
-    int      argc,
-    char   **argv);
+    InputArgs        *ia,
+    int             argc,
+    char          **argv,
+    enum PartyType party);
 
 int
 str_to_pli_method (
@@ -158,24 +161,24 @@ accept_connection (
 
 int
 generate_list_entries (
-    uint64_t    **entries,
-    int       num_entries);
+    uint64_t **entries,
+    int    num_entries);
 
 int
 parse_file_for_num_entries (
-    int        *num_entries,
-    char         *filename);
+    size_t *num_entries,
+    char      *filename);
 
 int
 parse_file_for_list_entries (
-    BIGNUM      **entries,
-    int       num_entries,
-    char        *filename);
+    BIGNUM **entries,
+    int  num_entries,
+    char   *filename);
 
 int
 cstr_to_hex (
-    char  **cstr,
-    size_t   len);
+    char **cstr,
+    size_t  len);
 
 char *
 pad_leading_zeros (
@@ -183,14 +186,14 @@ pad_leading_zeros (
 
 int
 serialize_bignum (
-    char   **serialized,
-    BIGNUM         *msg);
+    char **serialized,
+    BIGNUM       *msg);
 
 int
 serialize_ecpoint (
-    char   **serialized,
-    EC_POINT       *msg,
-    EC_GROUP     *group);
+    char **serialized,
+    EC_POINT     *msg,
+    EC_GROUP   *group);
 
 int
 serialize_int (
@@ -239,7 +242,8 @@ deserialize_size_t (
 int
 deserialize_uchar (
     unsigned char  **msg,
-    char            *buf);
+    char            *buf,
+    size_t           len);
 
 int
 deserialize_bignum (
@@ -266,7 +270,8 @@ hash (
     void            *input,
     char    *hash_alg_name,
     size_t hash_digest_len,
-    enum MessageType  type);
+    enum MessageType  type,
+    ...);
 
 int
 symmetric_encrypt (
@@ -287,5 +292,43 @@ symmetric_decrypt (
     unsigned char      *iv,
     char      *se_alg_name,
     enum MessageType  type);
+
+int
+evaluate_polynomial_at(
+    BIGNUM **  share,
+    BIGNUM *coeffs[],
+    int        input,
+    int    threshold,
+    BIGNUM  *modulus);
+
+int
+construct_shamir_shares (
+    BIGNUM **shares,
+    BIGNUM  *secret,
+    BIGNUM *modulus,
+    InputArgs    ia);
+
+int
+try_reconstruct_with (
+    BIGNUM **secret,
+    BIGNUM      **x,    
+    BIGNUM      **y,
+    int      length,
+    BIGNUM *modulus);
+
+int
+reconstruct_shamir_secret (
+    BIGNUM         **secret,
+    BIGNUM         **shares,
+    size_t        threshold,
+    size_t subset_indexes[],
+    BIGNUM         *modulus);
+
+int
+iteratively_check_all_subsets (
+    unsigned char *secret_digest,
+    BIGNUM             *shares[],
+    InputArgs                 ia,
+    BIGNUM              *modulus);
 
 #endif//_UTILS_H_

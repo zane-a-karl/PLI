@@ -4,15 +4,17 @@
 #include "PLI-elgamal-ah.h"
 #include "PLI-elgamal-mh.h"
 #include "PLI-ecelgamal-ah.h"
-#include "PLI-ecelgamal-mh.h"
+/* #include "PLI-ecelgamal-mh.h" */
 
 #include "PLIca-elgamal-ah.h"
 #include "PLIca-elgamal-mh.h"
 #include "PLIca-ecelgamal-ah.h"
+/* #include "PLIca-ecelgamal-mh.h" */
 
-/* #include "tPLI-elgamal-ah.h" */
+#include "tPLI-elgamal-ah.h"
 #include "tPLI-elgamal-mh.h"
-/* #include "tPLI-ecelgamal-ah.h" */
+#include "tPLI-ecelgamal-ah.h"
+/* #include "tPLI-ecelgamal-mh.h" */
 
 typedef int (*PliProtocol)(int, InputArgs);
 
