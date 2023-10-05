@@ -15,24 +15,24 @@ typedef struct LogItems {
     char *htype;
 } LogItems;
 
-#define TSTART(sp)							\
-    LogItems *l = parse_src_filename(__FILE__);				\
-    logfile = calloc(MAX_FILENAME_LEN, sizeof(char));			\
-    snprintf(logfile, MAX_FILENAME_LEN, "%s%s-%s-%s-%lu.%s", "logs/",	\
-	     l->pmeth, l->eflav, l->htype, sp, "csv");			\
-    free(l->pmeth);							\
-    free(l->eflav);							\
-    free(l->htype);							\
-    free(l);								\
-    logfs = fopen(logfile, "a");					\
-    printf("Starting the clock: \n");					\
-    clock_gettime(CLOCK_MONOTONIC, &t1);
-
-/* #define TSTART(sp)				\ */
-/*     logfile = calloc(32, sizeof(char));		\ */
-/*     logfs = stdout;				\ */
-/*     printf("Starting the clock: \n");		\ */
+/* #define TSTART(sp)							\ */
+/*     LogItems *l = parse_src_filename(__FILE__);				\ */
+/*     logfile = calloc(MAX_FILENAME_LEN, sizeof(char));			\ */
+/*     snprintf(logfile, MAX_FILENAME_LEN, "%s%s-%s-%s-%lu.%s", "logs/",	\ */
+/* 	     l->pmeth, l->eflav, l->htype, sp, "csv");			\ */
+/*     free(l->pmeth);							\ */
+/*     free(l->eflav);							\ */
+/*     free(l->htype);							\ */
+/*     free(l);								\ */
+/*     logfs = fopen(logfile, "a");					\ */
+/*     printf("Starting the clock: \n");					\ */
 /*     clock_gettime(CLOCK_MONOTONIC, &t1); */
+
+#define TSTART(sp)				\
+    logfile = calloc(MAX_FILENAME_LEN, sizeof(char));		\
+    logfs = stdout;				\
+    printf("Starting the clock: \n");		\
+    clock_gettime(CLOCK_MONOTONIC, &t1);
 
 #define TTICK clock_gettime(CLOCK_MONOTONIC, &t2);			\
     sec = (t2.tv_sec - t1.tv_sec) + (t2.tv_nsec - t1.tv_nsec) / 1000000000.0; \
