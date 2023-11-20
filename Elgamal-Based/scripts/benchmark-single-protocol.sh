@@ -16,7 +16,7 @@ server_file="input/server.txt"
 tmp_file="input/tmp.txt"
 start_size=10
 end_size=100
-sample_size=10
+sample_size=5
 pmeth="PLI"
 eflav="ECEG"
 htype="AH"
@@ -33,7 +33,7 @@ while getopts "p:e:m:y:n:t:" opt; do
 	    ;;
 	e)
 	    echo "Option 'e' was triggered with argument: $OPTARG"
-	    eflav=$OPTARG	    
+	    eflav=$OPTARG
 	    ;;
 	m)
 	    echo "Option 'm' was triggered with argument: $OPTARG"
@@ -41,16 +41,18 @@ while getopts "p:e:m:y:n:t:" opt; do
 	    ;;
 	y)
 	    echo "Option 'y' was triggered with argument: $OPTARG"
-	    secpar=$OPTARG	    
+	    secpar=$OPTARG
 	    ;;
 	n)
+	    # Kind of useless at the moment because this doesn't affect anything
 	    echo "Option 'd' was triggered with argument: $OPTARG"
 	    list_len=$OPTARG;
 	    ;;
 	t)
+	    # Kind of useless at the moment because this doesn't affect anything
 	    echo "Option 'd' was triggered with argument: $OPTARG"
 	    thresh=$OPTARG
-	    ;;    
+	    ;;
 	\?)
 	    # Invalid option
 	    echo "Invalid option: -$OPTARG"
@@ -75,21 +77,23 @@ make --quiet;
 
 echo "START AVERAGE RUNTIME/BANDWIDTH TEST";
 echo "sec par, # entries, total bytes, total_time" > "$logfile";
-for ((i=$start_size; i<=$end_size; i+=10))
+for ((i=$start_size; i<=$end_size; i+=$sample_size))
 do
-    ./scripts/setup-input-files.sh $i $secpar
-    # Remove '\'s
-    awk '{ gsub(/\\/, "") } 1' $client_file > $tmp_file && mv $tmp_file $client_file
-    awk '{ gsub(/\\/, "") } 1' $server_file > $tmp_file && mv $tmp_file $server_file
-    # Remove '\n's
-    awk '{ printf "%s", $0 } END { print "" }' $client_file > $tmp_file && mv $tmp_file $client_file
-    awk '{ printf "%s", $0 } END { print "" }' $server_file > $tmp_file && mv $tmp_file $server_file
 
     for ((j=0; j<$sample_size; j++))
     do
+	./scripts/setup-input-files.sh $i $secpar
+	# Remove '\'s
+	awk '{ gsub(/\\/, "") } 1' $client_file > $tmp_file && mv $tmp_file $client_file
+	awk '{ gsub(/\\/, "") } 1' $server_file > $tmp_file && mv $tmp_file $server_file
+	# Remove '\n's
+	awk '{ printf "%s", $0 } END { print "" }' $client_file > $tmp_file && mv $tmp_file $client_file
+	awk '{ printf "%s", $0 } END { print "" }' $server_file > $tmp_file && mv $tmp_file $server_file
+
+
 	printf "%s%d\n" "Begin: $pmeth $eflav $htype Protocol #" "$j"
 	# exit
-	./bin/main/client-and-server -p "$pmeth" -y "$secpar" -e "$eflav" -m "$htype" -t "$thresh"
+	./bin/main/client-and-server -p "$pmeth" -y "$secpar" -e "$eflav" -m "$htype" -t "$(($i/3))"
 	#	$pids=$(ps aux | grep "elgamal" | grep -v "grep" | awk '{print $2}')
 	wait
 	printf "%s%d\n\n" "Finish:  $pmeth $eflav $htype Protocol #" "$j"

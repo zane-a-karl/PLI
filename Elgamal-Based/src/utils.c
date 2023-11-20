@@ -1242,6 +1242,7 @@ construct_shamir_shares (
     BN_CTX *ctx = BN_CTX_new();
 
     coeffs[0] = BN_dup(secret);
+    printf("Secret = "); BN_print_fp(stdout, secret); printf("\n");
     for (int i = 1; i < ia.threshold; i++) {
 	coeffs[i] = BN_new();
 	if (!coeffs[i]) { return openssl_error("Failed to alloc coeffs"); }
@@ -1647,7 +1648,7 @@ gaussian_elim (
     c = ncols;
 
     for (size_t pivot = 0; pivot < r; pivot++) {
-	printf("pivot = %zu\n", pivot);
+	/* printf("pivot = %zu\n", pivot); */
 	if (BN_is_zero(mat[c*pivot + pivot])) {
 	    for (size_t k = pivot + 1; k < r; k++) {
 		if (!BN_is_zero(mat[c*k + k])) {
@@ -1659,7 +1660,13 @@ gaussian_elim (
 	}
 
 	for (size_t i = 0; i < r; i++) {
-
+	    /* printf("mat[pivot][pivot] = "); */
+	    /* BN_print_fp(stdout, mat[c*pivot + pivot]); printf("\n"); */
+	    /* We don't want to fail here, we want to break and move on to the next iteration
+	       rows being linearly DEpendent means we move on decreasing the errors */
+	    if (BN_is_zero(mat[c*pivot + pivot])) {
+		break;
+	    }
 	    inv = BN_mod_inverse(inv, mat[c*pivot + pivot], modulus, ctx);
 	    if (!inv) { return openssl_error("Failed to invert mat"); }
 	    rv = BN_mod_mul(fac, mat[c*i + pivot], inv, modulus, ctx);
@@ -1677,8 +1684,8 @@ gaussian_elim (
 		}
 	    }
 	}
-	printf("-----------------------\n");
-	print_mat(mat, r, c);
+	/* printf("-----------------------\n"); */
+	/* print_mat(mat, r, c); */
     }
     BN_free(inv);
     BN_free(tmp);
@@ -1778,13 +1785,15 @@ polynomial_divide (
 	    if (!rv) { return openssl_error("Failed to mod mul poly_quo and poly_b"); }
 	    rv = BN_mod_sub(poly_rem[a], poly_a[a], poly_rem[a], modulus, ctx);
 	    if (!rv) { return openssl_error("Failed to mod mul poly_a and poly_rem"); }
+	    BN_copy(poly_a[a], poly_rem[a]);
+	    if (!poly_a[a]) { return FAILURE; }
 	}
-	for (ssize_t j = a_deg - i; j >= 0; j--) {
-	    BN_copy(poly_a[j], poly_rem[j]);
-	    if (!poly_a[j]) { return openssl_error("Failed to BN_copy poly_a and poly_rem"); }
-	    /* TODO: Check for non-zero remainder? */
-	    BN_zero(poly_rem[j]);
-	}
+	/* for (ssize_t j = a_deg - i; j >= 0; j--) { */
+	/*     BN_copy(poly_a[j], poly_rem[j]); */
+	/*     if (!poly_a[j]) { return openssl_error("Failed to BN_copy poly_a and poly_rem"); } */
+	/*     /\* TODO: Check for non-zero remainder? *\/ */
+	/*     BN_zero(poly_rem[j]); */
+	/* } */
     }
 
     for (size_t i = 0; i < a_deg + 1; i++) {
@@ -1806,18 +1815,15 @@ exec_BW_alg (
     int rv;
     size_t r;
     size_t c;
-    size_t e;
+    ssize_t e;
     size_t succeeded;
     double max_errors;
-    BIGNUM *one;
     BIGNUM *possible_secret = NULL;
     const size_t n = ia.num_entries;
     const size_t t = ia.threshold;
     BIGNUM *BW_mat[n][n + 1];
     BIGNUM *eval_pts[n];
 
-    one = BN_new();
-    if (!one) { return openssl_error("Failed to alloc one"); }
     for (size_t i = 0 ; i < n; i++) {
 	eval_pts[i] = BN_new();
 	if (!eval_pts[i]) { return openssl_error("Failed to alloc eval_pts[i]"); }
@@ -1825,23 +1831,24 @@ exec_BW_alg (
 	if (!rv) { return openssl_error("Failed to set_word on eval_pts[i]"); }
     }
 
-    rv = BN_one(one);
-    if (!rv) { return openssl_error("Failed to set one to BN_one"); }
     r = n;
     c = n + 1;
     succeeded = 1;
     max_errors = floor((double)(n - t) / (double)2);
 
     for (e = max_errors; e >= 0; e--) {
+	printf("################################\n");
+	printf("assumed errors iteration = %zu\n", e);
+	printf("################################\n\n\n");
 	/* Fn alloc's each BW_mat[c*i + j] */
 	rv = setup_BW_matrix(&BW_mat[0][0], shares, eval_pts, modulus, n, e);
 	if (!rv) { return general_error("Failed during setup_BW_matrix"); }
 	rv = gaussian_elim(&BW_mat[0][0], modulus, r, c);
 	if (!rv) { return general_error("Failed during gaussian_elim"); }
-	printf("------------\n");
-	print_mat(&BW_mat[0][0], r, c);
+	/* printf("------------\n"); */
+	/* print_mat(&BW_mat[0][0], r, c); */
 	for (size_t i = 0; i < r; i++) {
-	    if (0 != BN_cmp(BW_mat[i][i], one)) {
+	    if (!BN_is_one(BW_mat[i][i])) {
 		succeeded = 0;
 	    }
 	}
@@ -1862,16 +1869,8 @@ exec_BW_alg (
 	/* Fn alloc's F */
 	rv = polynomial_divide(F, Q, E, q, e, modulus);
 	if (!rv) { return general_error("Failed during polynomial_divide"); }
-	for (size_t i = 0; i < e + 1; i++) {
-	    BN_free(E[i]);
-	}
-	for (size_t i = 0; i < q + 1; i++) {
-	    BN_free(Q[i]);
-	}
-	print_mat(F, 1, f);
-	/* Fn alloc's possible_secret */
-	rv = evaluate_polynomial_at(&possible_secret, F, 0, t, modulus);
-	if (!rv) { return general_error("Failed evaluate_polynomial_at 0"); }
+	/* print_mat(F, 1, f); */
+	printf("Possible secret = "); BN_print_fp(stdout, F[0]); printf("\n");
 	unsigned char *possible_secret_digest;
 	size_t digest_len;
 	switch (ia.secpar) {
@@ -1879,25 +1878,27 @@ exec_BW_alg (
 	case 1024:
 	    digest_len = SHA_DIGEST_LENGTH;
 	    /* Fn alloc's possible_secret_digest */
-	    rv = hash(&possible_secret_digest, possible_secret, "SHA1", digest_len, Bignum);
+	    rv = hash(&possible_secret_digest, F[0], "SHA1", digest_len, Bignum);
 	    break;
 	case 224: /* Fall Through */
 	case 2048:
 	    digest_len = SHA224_DIGEST_LENGTH;
-	    rv = hash(&possible_secret_digest, possible_secret, "SHA224", digest_len, Bignum);
+	    rv = hash(&possible_secret_digest, F[0], "SHA224", digest_len, Bignum);
 	    break;
 	default:
 	    digest_len = SHA256_DIGEST_LENGTH;
-	    rv = hash(&possible_secret_digest, possible_secret, "SHA256", digest_len, Bignum);
+	    rv = hash(&possible_secret_digest, F[0], "SHA256", digest_len, Bignum);
 	    break;
 	}
 	if (0 == memcmp(secret_digest, possible_secret_digest, digest_len)) {
-	    BN_free(possible_secret);
+	    printf("The digests match!!!!!\n");
+	    /* BN_free(possible_secret); */
 	    for (size_t i = 0; i < n; i++) {
 		/* Using possible_secret as a tmp storage var */
-		rv = evaluate_polynomial_at(&possible_secret, F, i + 1, t, modulus);
+		/* Fn alloc's possible_secret */
+		rv = evaluate_polynomial_at(&possible_secret, E, i + 1, w, modulus);
 		if (!rv) { return general_error("Failed evaluate_polynomial_at i+1"); }
-		if (0 == BN_cmp(shares[i], possible_secret)) {
+		if (!BN_is_zero(possible_secret)) {
 		    matches[i] = 1;
 		}
 		BN_free(possible_secret);
@@ -1905,13 +1906,18 @@ exec_BW_alg (
 	} else {
 	    printf("Match failed in spite of reconstruction\n");
 	}
+	for (size_t i = 0; i < e + 1; i++) {
+	    BN_free(E[i]);
+	}
+	for (size_t i = 0; i < q + 1; i++) {
+	    BN_free(Q[i]);
+	}
     } else {
 	printf("Failed to reconstruct\n");
-	print_mat(&BW_mat[0][0], r, c);
+	/* print_mat(&BW_mat[0][0], r, c); */
     }
-
-    BN_free(one);
-    BN_free(possible_secret);
+    /* possible_secret freed above! */
+    /* BN_free(possible_secret); */
     for (size_t i = 0 ; i < n; i++) {
 	BN_free(eval_pts[i]);
     }

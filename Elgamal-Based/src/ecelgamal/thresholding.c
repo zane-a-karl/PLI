@@ -51,12 +51,14 @@ ecelgamal_server_thresholding (
 	if (!r) { return openssl_error("Failed to ptmul cipher.c1 * sk"); }
 
 	switch (ia.secpar) {
+	case 160:		/* Fall through */
 	case 1024:
 	    digest_len = SHA_DIGEST_LENGTH;
 	    /* Fn alloc's cipher_digests[i] */
 	    r = hash(&cipher_digests[i], cipher[i].c2, "SHA1", digest_len, Ecpoint,
 		     server_keys.pk->group);
 	    break;
+	case 224:		/* Fall through */
 	case 2048:
 	    digest_len = SHA224_DIGEST_LENGTH;
 	    r = hash(&cipher_digests[i], cipher[i].c2, "SHA224", digest_len, Ecpoint,
@@ -99,7 +101,7 @@ ecelgamal_server_thresholding (
     }
     /* r = iteratively_check_all_subsets(matches, secret_digest, shares, ia, server_keys.pk->p); */
     /* if (!r) { return general_error("Failed during iteratively_check_all_subsets"); } */
-    r = exec_BW_alg(matches, secret_digest, shares, ia, server_keys.pk->p);    
+    r = exec_BW_alg(matches, secret_digest, shares, ia, server_keys.pk->p);
     if (!r) { return general_error("Failed during exec_BW_alg"); }
 
     for (size_t i = 0; i < ia.num_entries; i++) {
@@ -160,6 +162,7 @@ ecelgamal_client_thresholding (
     size_t digest_len;
     for (size_t i = 0; i < ia.num_entries; i++) {
 	switch (ia.secpar) {
+	case 160:		/* Fall through */
 	case 1024:
 	    digest_len = SHA_DIGEST_LENGTH;
 	    /* Fn alloc's cipher_digests[i] */
@@ -167,6 +170,7 @@ ecelgamal_client_thresholding (
 		     server_pk.group);
 	    r &= hash(&secret_digest, bn_secret, "SHA1", digest_len, Bignum);
 	    break;
+	case 224:		/* Fall through */
 	case 2048:
 	    digest_len = SHA224_DIGEST_LENGTH;
 	    r = hash(&cipher_digests[i], cipher[i].c2, "SHA224", digest_len, Ecpoint,
