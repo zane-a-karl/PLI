@@ -1579,7 +1579,6 @@ setup_BW_matrix (
 	rv = BN_mod_sub(mat[c*i + j], modulus, mat[c*i + j], modulus, ctx);
 	if (!rv) { return openssl_error("Failed to mod sub mod and mat"); }
     }
-    print_mat(mat, r, c);
     BN_free(exp);
     BN_CTX_free(ctx);
     return SUCCESS;
@@ -1651,7 +1650,7 @@ gaussian_elim (
 	/* printf("pivot = %zu\n", pivot); */
 	if (BN_is_zero(mat[c*pivot + pivot])) {
 	    for (size_t k = pivot + 1; k < r; k++) {
-		if (!BN_is_zero(mat[c*k + k])) {
+		if (!BN_is_zero(mat[c*k + pivot])) {
 		    rv = swap_rows(mat, pivot, k, c);
 		    if (!rv) { return general_error("Failed during swap_rows"); }
 		    break;
@@ -1817,6 +1816,7 @@ exec_BW_alg (
     size_t c;
     ssize_t e;
     size_t succeeded;
+    ssize_t sum_pivots;
     double max_errors;
     BIGNUM *possible_secret = NULL;
     const size_t n = ia.num_entries;
@@ -1834,6 +1834,7 @@ exec_BW_alg (
     r = n;
     c = n + 1;
     succeeded = 1;
+    sum_pivots = 0;
     max_errors = floor((double)(n - t) / (double)2);
 
     for (e = max_errors; e >= 0; e--) {
@@ -1846,13 +1847,17 @@ exec_BW_alg (
 	rv = gaussian_elim(&BW_mat[0][0], modulus, r, c);
 	if (!rv) { return general_error("Failed during gaussian_elim"); }
 	/* printf("------------\n"); */
-	/* print_mat(&BW_mat[0][0], r, c); */
+	print_mat(&BW_mat[0][0], r, c);
 	for (size_t i = 0; i < r; i++) {
-	    if (!BN_is_one(BW_mat[i][i])) {
-		succeeded = 0;
+	    if (BN_is_one(BW_mat[i][i])) {
+		sum_pivots++;
 	    }
 	}
-	if (succeeded) { break; }
+	if (sum_pivots == r) {
+	    succeeded = 1;
+	    break;
+	}
+	sum_pivots = 0;
     }
     if (succeeded) {
 	printf("Successfully reconstructed\n");
