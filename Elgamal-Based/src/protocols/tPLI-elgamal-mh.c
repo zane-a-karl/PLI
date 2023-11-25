@@ -1,4 +1,16 @@
+#include <stdlib.h>	                // size_t
+#include <openssl/bn.h>	                // BIGNUM
+#include "../../hdr/input-args/utils.h" // InputArgs
+#include <netdb.h>                      // struct sockaddr
+#include <openssl/ec.h>	                // EC_POINT
+#include "../../hdr/macros.h"           // MAX_FILENAME_LEN
 #include "../../hdr/protocols/tPLI-elgamal-mh.h"
+#include "../../hdr/elgamal/utils.h"	    // GamalKeys
+#include "../../hdr/error/utils.h"	    // openssl_error()
+#include "../../hdr/logging/utils.h"	    // TSTART()
+#include "../../hdr/elgamal/mh-utils.h"     // elgamal_mh_encrypt()
+#include "../../hdr/network/utils.h"	    // recv_msg()
+#include "../../hdr/elgamal/thresholding.h" // elgamal_server_thresholding()
 
 
 extern uint64_t total_bytes;
@@ -84,9 +96,6 @@ server_run_t_pli_elgamal_mh (
 	BN_free(server_cipher[i].c2);
     }
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }
 
@@ -181,8 +190,5 @@ client_run_t_pli_elgamal_mh (
 	BN_free(exp_res[i].c2);
     }
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }

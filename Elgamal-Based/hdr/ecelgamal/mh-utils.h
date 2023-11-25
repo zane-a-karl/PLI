@@ -1,8 +1,11 @@
-#ifndef _ECELGAMAL_MH_H_
-#define _ECELGAMAL_MH_H_
+#ifndef ECELGAMAL_MH_UTILS_H
+#define ECELGAMAL_MH_UTILS_H
 
-#include "utils.h"
-
+/*******************Include Prerequisites******************
+#include <openssl/ec.h>                // EC_POINT
+#include "../../hdr/ecelgamal/utils.h" // EcGamalCiphertext
+#include "../../hdr/macros.h"          // SUCCESS
+**********************************************************/
 
 int
 ecelgamal_mh_encrypt (
@@ -23,4 +26,4 @@ ecelgamal_skip_decrypt_check_equality (
     EcGamalKeys         keys,
     EcGamalCiphertext cipher);
 
-#endif//_ECELGAMAL_MH_H_
+#endif//ECELGAMAL_MH_UTILS_H

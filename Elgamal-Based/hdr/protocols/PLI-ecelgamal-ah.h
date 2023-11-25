@@ -1,11 +1,13 @@
-#ifndef _PLI_ECELGAMAL_AH_H_
-#define _PLI_ECELGAMAL_AH_H_
+#ifndef PLI_ECELGAMAL_AH_H
+#define PLI_ECELGAMAL_AH_H
 
-#include <openssl/rand.h>
-#include "../logging-utils.h"
-#include "../ecelgamal/ah-utils.h"
-
-typedef struct InputArgs InputArgs;
+/*******************Include Prerequisites******************
+#include <stdlib.h>                     // size_t
+#include <openssl/bn.h>                 // BIGNUM
+#include <openssl/ec.h>                 // EC_POINT
+#include "../../hdr/macros.h"           // MAX_FILENAME_LEN
+#include "../../hdr/input-args/utils.h" // InputArgs
+**********************************************************/
 
 int
 server_run_pli_ecelgamal_ah (
@@ -17,4 +19,4 @@ client_run_pli_ecelgamal_ah (
     int   sockfd,
     InputArgs ia);
 
-#endif//_PLI_ECELGAMAL_AH_H_
+#endif//PLI_ECELGAMAL_AH_H

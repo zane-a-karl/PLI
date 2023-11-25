@@ -1,5 +1,14 @@
-#include "../../hdr/utils.h"
-#include "../../hdr/protocols/utils.h"
+#include <stdlib.h>
+#include <openssl/bn.h>
+#include <netdb.h>
+#include <openssl/ec.h>
+#include "../../hdr/input-args/utils.h" /* InputArgs, parse_input_args() */
+#include "../../hdr/network/utils.h" /* hardcode_socket_parameters(), set_socket_and_bind(), start_server(), reap_all_dead_processes(), accept_connection() */
+#include "../../hdr/protocols/utils.h" /* PliProtocol, run() */
+#include "../../hdr/error/utils.h" /* general_error() */
+#include <stdio.h>		     /* printf() */
+#include <sys/types.h>			/* struct addrinfo, freeaddrinfo() */
+#include <unistd.h>			/* fork(), close() */
 
 
 #define PORT "3490" /* Clients will connect to this port on the server */

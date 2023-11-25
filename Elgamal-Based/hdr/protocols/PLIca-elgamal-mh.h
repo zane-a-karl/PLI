@@ -1,11 +1,12 @@
-#ifndef _PLI_CA_ELGAMAL_MH_H_
-#define _PLI_CA_ELGAMAL_MH_H_
+#ifndef PLI_CA_ELGAMAL_MH_H
+#define PLI_CA_ELGAMAL_MH_H
 
-#include <openssl/rand.h>
-#include "../logging-utils.h"
-#include "../elgamal/mh-utils.h"
-
-typedef struct InputArgs InputArgs;
+/*******************Include Prerequisites******************
+#include <stdlib.h>                     // size_t
+#include <openssl/bn.h>                 // BIGNUM
+#include "../../hdr/input-args/utils.h" // InputArgs
+#include "../../hdr/macros.h"           // MAX_FILENAME_LEN
+**********************************************************/
 
 int
 server_run_pli_ca_elgamal_mh (
@@ -17,4 +18,4 @@ client_run_pli_ca_elgamal_mh (
     int   sockfd,
     InputArgs ia);
 
-#endif//_PLI_CA_ELGAMAL_MH_H_
+#endif//PLI_CA_ELGAMAL_MH_H

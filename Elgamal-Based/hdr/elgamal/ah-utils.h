@@ -1,8 +1,11 @@
-#ifndef _ELGAMAL_AH_UTILS_H_
-#define _ELGAMAL_AH_UTILS_H_
+#ifndef ELGAMAL_AH_UTILS_H
+#define ELGAMAL_AH_UTILS_H
 
-#include "utils.h"
-
+/*******************Include Prerequisites******************
+#include <openssl/bn.h>              // BIGNUM
+#include "../../hdr/elgamal/utils.h" // GamalCiphertext
+#include "../../hdr/macros.h"        // SUCCESS
+**********************************************************/
 
 int
 elgamal_ah_encrypt (
@@ -33,4 +36,4 @@ elgamal_skip_dlog_check_is_one (
     GamalKeys         keys,
     GamalCiphertext cipher);
 
-#endif//_ELGAMAL_AH_UTILS_H_
+#endif//ELGAMAL_AH_UTILS_H

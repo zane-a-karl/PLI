@@ -1,4 +1,8 @@
+#include <openssl/bn.h>              // BIGNUM
+#include "../../hdr/elgamal/utils.h" // GamalCiphertext
+#include "../../hdr/macros.h"        // SUCCESS
 #include "../../hdr/elgamal/mh-utils.h"
+#include "../../hdr/error/utils.h"   // openssl_error()
 
 
 int
@@ -8,7 +12,7 @@ elgamal_mh_encrypt (
     BIGNUM    *bn_plaintext,
     int             sec_par)
 {
-    int r = 1;
+    int r;
     BIGNUM *bn_rand_elem;
     BN_CTX *ctx = BN_CTX_new();
     if (!ctx) { r = 0; return openssl_error("Failed to create new ctx"); }
@@ -33,9 +37,6 @@ elgamal_mh_encrypt (
 
     BN_free(bn_rand_elem);
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }
 
@@ -45,7 +46,7 @@ elgamal_mh_decrypt (
     GamalKeys          keys,
     GamalCiphertext  cipher)
 {
-    int r = 1;
+    int r;
     BIGNUM *denominator;
     BIGNUM *tmp;
     BN_CTX *ctx = BN_CTX_new();
@@ -64,9 +65,6 @@ elgamal_mh_decrypt (
 
     BN_free(denominator);
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }
 
@@ -76,10 +74,10 @@ elgamal_skip_decrypt_check_equality (
     GamalKeys         keys,
     GamalCiphertext cipher)
 {
-    int r = 1;
+    int r;
     BIGNUM *denominator;
     BN_CTX *ctx = BN_CTX_new();
-    if (!ctx) { r= 0; return openssl_error("Failed to create new ctx"); }
+    if (!ctx) { r = 0; return openssl_error("Failed to create new ctx"); }
     denominator = BN_new();
     if (!denominator) { r = 0; return openssl_error("Failed to make new bn"); }
     // Calculate c1^sk
@@ -94,8 +92,5 @@ elgamal_skip_decrypt_check_equality (
 
     BN_free(denominator);
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }

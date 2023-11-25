@@ -1,9 +1,11 @@
-#ifndef _ECELGAMAL_UTILS_H_
-#define _ECELGAMAL_UTILS_H_
+#ifndef ECELGAMAL_UTILS_H
+#define ECELGAMAL_UTILS_H
 
-#include <openssl/obj_mac.h> // NID's
-#include "../utils.h"
-
+/*******************Include Prerequisites******************
+#include <openssl/ec.h>       // EC_GROUP
+#include <netdb.h>            // struct sockaddr
+#include "../../hdr/macros.h" // SUCCESS
+**********************************************************/
 
 /* Find Available Curves with `openssl ecparam -list_curves` */
 #define OPENSSL_160_BIT_CURVE NID_secp160r1

@@ -1,8 +1,15 @@
-#ifndef _ELEGAMAL_THRESHOLDING_H_
-#define _ELEGAMAL_THRESHOLDING_H_
+#ifndef ELEGAMAL_THRESHOLDING_H
+#define ELEGAMAL_THRESHOLDING_H
 
-#include "utils.h"
-
+/*******************Include Prerequisites******************
+#include <stdlib.h>                     // size_t
+#include <openssl/bn.h>                 // BIGNUM
+#include "../../hdr/elgamal/utils.h"    // GamalKeys
+#include "../../hdr/input-args/utils.h" // struct InputArgs
+#include <netdb.h>                      // struct sockaddr
+#include <openssl/ec.h>                 // EC_POINT
+#include "../../hdr/macros.h"           // SUCCESS
+**********************************************************/
 
 int
 elgamal_server_thresholding(
@@ -19,4 +26,4 @@ elgamal_client_thresholding (
     GamalCiphertext cipher[],
     InputArgs             ia);
 
-#endif//_ELEGAMAL_THRESHOLDING_H_
+#endif//ELEGAMAL_THRESHOLDING_H

@@ -6,9 +6,14 @@ OBJ=obj
 HDR=hdr
 BIN=bin
 MAIN=main
-EG="elgamal"
-ECEG="ecelgamal"
-PROTOCOLS="protocols"
+CRYPTO=crypto
+ECEG=ecelgamal
+EG=elgamal
+ERROR=error
+INPUT_ARGS="input-args"
+LOGGING=logging
+NETWORK=network
+PROTOCOLS=protocols
 SRCS=$(wildcard $(SRC)/*.c) $(wildcard $(SRC)/**/*.c)
 HDRS=$(wildcard $(HDR)/*.h) $(wildcard $(HDR)/**/*.h)
 OBJS=$(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(SRCS))
@@ -26,13 +31,18 @@ DEBUG:
 	$(info MAIN_OBJS:  $(MAIN_OBJS))
 
 DIR_SETUP:
-	if ! [[ -d $(BIN) ]]; then mkdir $(BIN); fi
-	if ! [[ -d $(BIN)/$(MAIN) ]]; then mkdir $(BIN)/$(MAIN); fi
-	if ! [[ -d $(OBJ) ]]; then mkdir $(OBJ); fi
-	if ! [[ -d $(OBJ)/$(MAIN) ]]; then mkdir $(OBJ)/$(MAIN); fi
-	if ! [[ -d $(OBJ)/$(EG) ]]; then mkdir $(OBJ)/$(EG); fi
-	if ! [[ -d $(OBJ)/$(ECEG) ]]; then mkdir $(OBJ)/$(ECEG); fi
-	if ! [[ -d $(OBJ)/$(PROTOCOLS) ]]; then mkdir $(OBJ)/$(PROTOCOLS); fi
+	if ! [ -d $(BIN) ]; then mkdir $(BIN); fi
+	if ! [ -d $(BIN)/$(MAIN) ]; then mkdir $(BIN)/$(MAIN); fi
+	if ! [ -d $(OBJ) ]; then mkdir $(OBJ); fi
+	if ! [ -d $(OBJ)/$(MAIN) ]; then mkdir $(OBJ)/$(MAIN); fi
+	if ! [ -d $(OBJ)/$(CRYPTO) ]; then mkdir $(OBJ)/$(CRYPTO); fi
+	if ! [ -d $(OBJ)/$(ECEG) ]; then mkdir $(OBJ)/$(ECEG); fi
+	if ! [ -d $(OBJ)/$(EG) ]; then mkdir $(OBJ)/$(EG); fi
+	if ! [ -d $(OBJ)/$(ERROR) ]; then mkdir $(OBJ)/$(ERROR); fi
+	if ! [ -d $(OBJ)/$(INPUT_ARGS) ]; then mkdir $(OBJ)/$(INPUT_ARGS); fi
+	if ! [ -d $(OBJ)/$(LOGGING) ]; then mkdir $(OBJ)/$(LOGGING); fi
+	if ! [ -d $(OBJ)/$(NETWORK) ]; then mkdir $(OBJ)/$(NETWORK); fi
+	if ! [ -d $(OBJ)/$(PROTOCOLS) ]; then mkdir $(OBJ)/$(PROTOCOLS); fi
 
 CLIENT: $(BIN)/$(MAIN)/client
 SERVER: $(BIN)/$(MAIN)/server

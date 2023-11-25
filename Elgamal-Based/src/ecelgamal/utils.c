@@ -1,4 +1,11 @@
+#include <openssl/ec.h>       // EC_GROUP
+#include <netdb.h>            // struct sockaddr
+#include "../../hdr/macros.h" // SUCCESS
 #include "../../hdr/ecelgamal/utils.h"
+#include <openssl/obj_mac.h>            // NID_secp160r1
+#include "../../hdr/error/utils.h"      // openssl_error()
+#include "../../hdr/input-args/utils.h" // enum MessageType
+#include "../../hdr/network/utils.h"    // send_msg()
 
 
 /**
@@ -22,7 +29,7 @@ set_ec_group (
 	pk->group = EC_GROUP_new_by_curve_name(OPENSSL_256_BIT_CURVE);
 	break;
     }
-    if (!pk->group) { perror("Failed to set pk group to nid"); return FAILURE; }
+    if (!pk->group) { return openssl_error("Failed to set pk group to nid"); }
     return SUCCESS;
 }
 
@@ -44,35 +51,35 @@ ecelgamal_generate_keys (
     // Initialize pk->group
     keys->pk = calloc(1, sizeof(EcGamalPk));
     r = set_ec_group(keys->pk, secpar);
-    if (!r) { perror("Failed to set ec group"); return FAILURE; }
+    if (!r) { return openssl_error("Failed to set ec group"); }
     // Initialize pk->order
     keys->pk->order = BN_new();
     r = EC_GROUP_get_order(keys->pk->group, keys->pk->order, ctx);
-    if (!r) { perror("Failed to get group order"); return FAILURE; }
+    if (!r) { return openssl_error("Failed to get group order"); }
     /* printf("order = "); */
     /* BN_print_fp(stdout, keys->pk->order); */
     /* printf("\n"); */
     // Initialize sk
-    keys->sk = calloc(1, sizeof(EcGamalPk));    
+    keys->sk = calloc(1, sizeof(EcGamalPk));
     keys->sk->secret = BN_new();
-    if (!keys->sk->secret) { r = 0; perror("Failed to alloc keys->sk->secret"); return FAILURE; }
+    if (!keys->sk->secret) { r = 0; return openssl_error("Failed to alloc keys->sk->secret"); }
     r = BN_rand_range_ex(keys->sk->secret, keys->pk->order, secpar, ctx);
-    if (!r) { perror("Failed to generate random sk"); return FAILURE; }
+    if (!r) { return openssl_error("Failed to generate random sk"); }
     g = EC_GROUP_get0_generator(keys->pk->group);
     keys->pk->generator = EC_POINT_dup(g, keys->pk->group);
-    if (!keys->pk->generator) { r = 0; perror("Failed to get generator"); return FAILURE; }
+    if (!keys->pk->generator) { r = 0; return openssl_error("Failed to get generator"); }
     // Initialize pk->point
     keys->pk->point = EC_POINT_new(keys->pk->group);
-    if (!keys->pk->point) { r = 0; perror("Failed to alloc pk point"); return FAILURE; }
+    if (!keys->pk->point) { r = 0; return openssl_error("Failed to alloc pk point"); }
     // calc point = G(sk) + 0*0
     r = EC_POINT_mul(keys->pk->group, keys->pk->point, keys->sk->secret, NULL, NULL, ctx);
-    if (!keys->pk->point) { r = 0; perror("Failed to get pk point"); return FAILURE; }
+    if (!keys->pk->point) { r = 0; return openssl_error("Failed to get pk point"); }
     // Initialize curve params p, a, and b
     keys->pk->p = BN_new();
     keys->pk->a = BN_new();
     keys->pk->b = BN_new();
     r = EC_GROUP_get_curve(keys->pk->group, keys->pk->p, keys->pk->a, keys->pk->b, ctx);
-    if (!r) { perror("Failed to get curve params"); return FAILURE; }
+    if (!r) { return openssl_error("Failed to get curve params"); }
     /* printf("p = "); */
     /* BN_print_fp(stdout, keys->pk->p); */
     /* printf("\n"); */
@@ -84,12 +91,9 @@ ecelgamal_generate_keys (
     /* printf("\n"); */
     // Check if it's indeed prime
     r = BN_check_prime(keys->pk->p, ctx, NULL);
-    if (!r) { perror("Failed to generate true prime"); return FAILURE; }
+    if (!r) { return openssl_error("Failed to generate true prime"); }
 
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }
 
@@ -109,15 +113,12 @@ ecelgamal_add (
     if (!res->c2) { r = 0; return openssl_error("Error allocating res->c2"); }
     // Calc a.c1 + b.c1
     r = EC_POINT_add(pk.group, res->c1, a.c1, b.c1, ctx);
-    if (!r) { perror("Failed to add c1 terms"); return FAILURE; }
+    if (!r) { return openssl_error("Failed to add c1 terms"); }
     // Calc a.c2 + b.c2
     r = EC_POINT_add(pk.group, res->c2, a.c2, b.c2, ctx);
-    if (!r) { perror("Failed to add c2 terms"); return FAILURE; }
+    if (!r) { return openssl_error("Failed to add c2 terms"); }
 
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }
 
@@ -137,15 +138,12 @@ ecelgamal_ptmul (
     if (!res->c2) { r = 0; return openssl_error("Error allocating res->c2"); }
     // Calc a.c1 * b
     r = EC_POINT_mul(pk.group, res->c1, NULL, a.c1, b, ctx);
-    if (!r) { perror("Failed to ptmul c1 terms"); return FAILURE; }
+    if (!r) { return openssl_error("Failed to ptmul c1 terms"); }
     // Calc a.c2 * b
     r = EC_POINT_mul(pk.group, res->c2, NULL, a.c2, b, ctx);
-    if (!r) { perror("Failed to ptmul c2 terms"); return FAILURE; }
+    if (!r) { return openssl_error("Failed to ptmul c2 terms"); }
 
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }
 
@@ -170,7 +168,7 @@ ecelgamal_permute_ciphertexts (
     r = BN_set_word(bn_len, len);
     for (int i = 0; i < len; i++) {
 	r = BN_rand_range(bn_rand, bn_len);
-	if (!r) {return openssl_error("Failed bn_rand_range()"); }
+	if (!r) { return openssl_error("Failed bn_rand_range()"); }
 	rand = BN_get_word(bn_rand);
 	EC_POINT_copy(bn_tmp_c1, ciphers[i].c1);
 	EC_POINT_copy(bn_tmp_c2, ciphers[i].c2);
@@ -224,6 +222,7 @@ ecelgamal_send_ciphertext (
     if (!r) { return general_error("Failed to send ciphertext.c1"); }
     r = send_msg(sockfd, c->c2, "\t- c2 = ", Ecpoint, pk->group);
     if (!r) { return general_error("Failed to send ciphertext.c2"); }
+
     return SUCCESS;
 }
 
@@ -262,7 +261,7 @@ ecelgamal_recv_pk (
     r = recv_msg(sockfd, &pk->point, "point   = ", Ecpoint, pk->group);
     if (!r) { return general_error("Failed to recv server pk point"); }
     r = EC_GROUP_get_curve(pk->group, pk->p, pk->a, pk->b, ctx);
-    if (!r) { openssl_error("Failed to get curve params"); }
+    if (!r) { return openssl_error("Failed to get curve params"); }
 
     BN_CTX_free(ctx);
     return SUCCESS;
@@ -286,5 +285,6 @@ ecelgamal_recv_ciphertext (
     if (!r) { return general_error("Failed to recv ciphertext c1"); }
     r = recv_msg(sockfd, &c->c2, "\t- c1 = ", Ecpoint, pk->group);
     if (!r) { return general_error("Failed to recv ciphertext c2"); }
+
     return SUCCESS;
 }

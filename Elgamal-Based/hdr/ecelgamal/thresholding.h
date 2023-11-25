@@ -1,8 +1,14 @@
-#ifndef _ECELGAMAL_THRESHOLDING_H_
-#define _ECELGAMAL_THRESHOLDING_H_
+#ifndef ECELGAMAL_THRESHOLDING_H
+#define ECELGAMAL_THRESHOLDING_H
 
-#include "utils.h"
-
+/*******************Include Prerequisites******************
+#include <stdlib.h>                     // size_t
+#include <openssl/ec.h>                 // EC_GROUP
+#include "../../hdr/ecelgamal/utils.h"  // EcGamalKeys
+#include "../../hdr/input-args/utils.h" // InputArgs
+#include <netdb.h>                      // struct sockaddr
+#include "../../hdr/macros.h"           // SUCCESS
+**********************************************************/
 
 int
 ecelgamal_server_thresholding(
@@ -19,4 +25,4 @@ ecelgamal_client_thresholding (
     EcGamalCiphertext cipher[],
     InputArgs               ia);
 
-#endif//_ECELGAMAL_THRESHOLDING_H_
+#endif//ECELGAMAL_THRESHOLDING_H

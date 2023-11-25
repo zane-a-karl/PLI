@@ -1,8 +1,10 @@
-#ifndef _ELGAMAL_MH_UTILS_H_
-#define _ELGAMAL_MH_UTILS_H_
+#ifndef ELGAMAL_MH_UTILS_H
+#define ELGAMAL_MH_UTILS_H
 
-#include "utils.h"
-
+/*******************Include Prerequisites******************
+#include "../../hdr/elgamal/utils.h" // GamalCiphertext
+#include "../../hdr/macros.h"        // SUCCESS
+**********************************************************/
 
 int
 elgamal_mh_encrypt (
@@ -23,4 +25,4 @@ elgamal_skip_decrypt_check_equality (
     GamalKeys         keys,
     GamalCiphertext cipher);
 
-#endif//_ELGAMAL_MH_UTILS_H_
+#endif//ELGAMAL_MH_UTILS_H

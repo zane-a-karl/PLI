@@ -1,4 +1,13 @@
+#include <stdlib.h>	                // size_t
+#include <openssl/bn.h>	                // BIGNUM
+#include <openssl/ec.h>                 // EC_POINT
+#include "../../hdr/macros.h"           // MAX_FILENAME_LEN
+#include "../../hdr/input-args/utils.h" // InputArgs
 #include "../../hdr/protocols/PLI-ecelgamal-mh.h"
+#include "../../hdr/ecelgamal/utils.h"	  // EcGamalKeys
+#include "../../hdr/logging/utils.h"	  // TSTART()
+#include "../../hdr/error/utils.h"	  // openssl_error()
+#include "../../hdr/ecelgamal/mh-utils.h" // ecelgamal_mh_encrypt()
 
 
 extern uint64_t total_bytes;
@@ -102,9 +111,6 @@ server_run_pli_ecelgamal_mh (
 	BN_free(bn_plain[i]);
     }
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }
 
@@ -186,8 +192,5 @@ client_run_pli_ecelgamal_mh (
 	EC_POINT_free(server_cipher[i].c2);
     }
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }

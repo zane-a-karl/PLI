@@ -1,25 +1,12 @@
-#ifndef _PROTOCOLS_UTILS_H_
-#define _PROTOCOLS_UTILS_H_
+#ifndef PROTOCOLS_UTILS_H
+#define PROTOCOLS_UTILS_H
 
-#include "PLI-elgamal-ah.h"
-#include "PLI-elgamal-mh.h"
-#include "PLI-ecelgamal-ah.h"
-/* #include "PLI-ecelgamal-mh.h" */
-
-#include "PLIca-elgamal-ah.h"
-#include "PLIca-elgamal-mh.h"
-#include "PLIca-ecelgamal-ah.h"
-/* #include "PLIca-ecelgamal-mh.h" */
-
-#include "tPLI-elgamal-ah.h"
-#include "tPLI-elgamal-mh.h"
-#include "tPLI-ecelgamal-ah.h"
-/* #include "tPLI-ecelgamal-mh.h" */
-
-#include "tPLIca-elgamal-ah.h"
-#include "tPLIca-elgamal-mh.h"
-#include "tPLIca-ecelgamal-ah.h"
-/* #include "tPLI-ecelgamal-mh.h" */
+/*******************Include Prerequisites******************
+#include <stdlib.h>                     // size_t
+#include <openssl/bn.h>                 // BIGNUM
+#include "../../hdr/input-args/utils.h" // InputArgs
+#include "../../hdr/macros.h"           // MAX_FILENAME_LEN
+**********************************************************/
 
 typedef int (*PliProtocol)(int, InputArgs);
 
@@ -32,4 +19,4 @@ run (
     int         fd,
     InputArgs   ia);
 
-#endif//_PROTOCOLS_UTILS_H_
+#endif//PROTOCOLS_UTILS_H

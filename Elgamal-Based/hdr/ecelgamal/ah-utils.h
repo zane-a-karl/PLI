@@ -1,8 +1,11 @@
-#ifndef _ECELGAMAL_AH_UTILS_H_
-#define _ECELGAMAL_AH_UTILS_H_
+#ifndef ECELGAMAL_AH_UTILS_H
+#define ECELGAMAL_AH_UTILS_H
 
-#include "utils.h"
-
+/*******************Include Prerequisites******************
+#include <openssl/ec.h>                // EC_POINT
+#include "../../hdr/ecelgamal/utils.h" // EcGamalCiphertext
+#include "../../hdr/macros.h"          // SUCCESS
+**********************************************************/
 
 int
 ecelgamal_ah_encrypt (
@@ -29,4 +32,4 @@ ecelgamal_skip_dlog_check_is_at_infinity (
     EcGamalKeys         keys,
     EcGamalCiphertext cipher);
 
-#endif//_ECELGAMAL_AH_UTILS_H_
+#endif//ECELGAMAL_AH_UTILS_H

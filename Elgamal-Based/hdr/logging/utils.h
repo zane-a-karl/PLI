@@ -1,13 +1,9 @@
-#ifndef _LOGGING_UTILS_H_
-#define _LOGGING_UTILS_H_
+#ifndef LOGGING_UTILS_H
+#define LOGGING_UTILS_H
 
-#include <stdio.h>
-#include <stdlib.h> // calloc()
-#include <string.h> // strnlen()
-#include <time.h>   // clock_gettime()
-
-
-#define MAX_FILENAME_LEN 64
+/*******************Include Prerequisites******************
+#include "../../hdr/macros.h" // MAX_FILENAME_LEN
+**********************************************************/
 
 typedef struct LogItems {
     char *pmeth;
@@ -53,4 +49,4 @@ LogItems *
 parse_src_filename (
     char *filename);
 
-#endif//_LOGGING_UTILS_H_
+#endif//LOGGING_UTILS_H

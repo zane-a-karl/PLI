@@ -1,4 +1,16 @@
+#include <stdlib.h>	                // size_t
+#include <openssl/bn.h>	                // BIGNUM
+#include "../../hdr/input-args/utils.h" // InputArgs
+#include <netdb.h>                      // struct sockaddr
+#include "../../hdr/elgamal/utils.h"	// GamalCiphertext
+#include <openssl/ec.h>	                // EC_POINT
+#include "../../hdr/macros.h"           // MAX_FILENAME_LEN
 #include "../../hdr/protocols/tPLIca-elgamal-ah.h"
+#include "../../hdr/error/utils.h"	    // openssl_error()
+#include "../../hdr/logging/utils.h"	    // TSTART()
+#include "../../hdr/elgamal/ah-utils.h"     // elgamal_ah_encrypt()
+#include "../../hdr/network/utils.h"	    // recv_msg()
+#include "../../hdr/elgamal/thresholding.h" // elgamal_server_thresholding()
 
 
 extern uint64_t total_bytes;

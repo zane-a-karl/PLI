@@ -1,8 +1,13 @@
-#ifndef _ELGAMAL_UTILS_H_
-#define _ELGAMAL_UTILS_H_
+#ifndef ELGAMAL_UTILS_H
+#define ELGAMAL_UTILS_H
 
-#include "../utils.h"
-
+/*******************Include Prerequisites******************
+#include <openssl/bn.h>                 // BIGNUM
+#include <netdb.h>                      // struct sockaddr
+#include "../../hdr/input-args/utils.h" // enum PartType
+#include <openssl/ec.h>                 // EC_POINT
+#include "../../hdr/macros.h"           // SUCCESS
+**********************************************************/
 
 typedef struct GamalPk {
     BIGNUM *generator;
@@ -91,4 +96,8 @@ elgamal_recv_ciphertext (
     GamalCiphertext *c,
     char  *conf_prefix);
 
-#endif//_ELGAMAL_UTILS_H_
+int
+log_base2 (
+    int sec_par);
+
+#endif//ELGAMAL_UTILS_H

@@ -1,4 +1,29 @@
+#include <stdlib.h>	                // size_t
+#include <openssl/bn.h>	                // BIGNUM
+#include "../../hdr/input-args/utils.h" // InputArgs
+#include "../../hdr/macros.h"           // MAX_FILENAME_LEN
 #include "../../hdr/protocols/utils.h"
+#include "../../hdr/error/utils.h"      // general_error()
+/* PLI */
+#include "../../hdr/protocols/PLI-elgamal-ah.h"
+#include "../../hdr/protocols/PLI-elgamal-mh.h"
+#include "../../hdr/protocols/PLI-ecelgamal-ah.h"
+/* #include "../../hdr/PLI-ecelgamal-mh.h" */
+/* PLIca */
+#include "../../hdr/protocols/PLIca-elgamal-ah.h"
+#include "../../hdr/protocols/PLIca-elgamal-mh.h"
+#include "../../hdr/protocols/PLIca-ecelgamal-ah.h"
+/* #include "../../hdr/protocols/PLIca-ecelgamal-mh.h" */
+/* tPLI */
+#include "../../hdr/protocols/tPLI-elgamal-ah.h"
+#include "../../hdr/protocols/tPLI-elgamal-mh.h"
+#include "../../hdr/protocols/tPLI-ecelgamal-ah.h"
+/* #include "../../hdr/protocols/tPLI-ecelgamal-mh.h" */
+/* tPLIca */
+#include "../../hdr/protocols/tPLIca-elgamal-ah.h"
+#include "../../hdr/protocols/tPLIca-elgamal-mh.h"
+#include "../../hdr/protocols/tPLIca-ecelgamal-ah.h"
+/* #include "../../hdr/protocols/tPLI-ecelgamal-mh.h" */
 
 
 /** To add a new protocol:

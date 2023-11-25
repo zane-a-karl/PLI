@@ -1,4 +1,12 @@
+#include <stdlib.h>	                // size_t
+#include <openssl/bn.h>	                // BIGNUM
+#include "../../hdr/input-args/utils.h" // InputArgs
+#include "../../hdr/macros.h"           // MAX_FILENAME_LEN
 #include "../../hdr/protocols/PLIca-elgamal-mh.h"
+#include "../../hdr/elgamal/utils.h"	// elgamal_generate_keys()
+#include "../../hdr/error/utils.h"	// openssl_error()
+#include "../../hdr/logging/utils.h"	// TSTART()
+#include "../../hdr/elgamal/mh-utils.h" // elgamal_mh_encrypt()
 
 
 extern uint64_t total_bytes;
@@ -69,9 +77,6 @@ server_run_pli_ca_elgamal_mh (
 	BN_free(bn_plain[i]);
     }
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }
 
@@ -153,8 +158,5 @@ client_run_pli_ca_elgamal_mh (
 	BN_free(exp_res[i].c2);
     }
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }

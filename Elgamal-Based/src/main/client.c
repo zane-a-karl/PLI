@@ -1,5 +1,12 @@
-#include "../../hdr/utils.h"
-#include "../../hdr/protocols/utils.h"
+#include <stdlib.h>
+#include <openssl/bn.h>
+#include <netdb.h>
+#include <openssl/ec.h>
+#include "../../hdr/input-args/utils.h" /* InputArgs, parse_input_args() */
+#include "../../hdr/network/utils.h"    /* hardcode_socket_parameters(), set_socket_and_connect() */
+#include "../../hdr/error/utils.h"      /* general_error() */
+#include "../../hdr/protocols/utils.h"  /* PliProtocol, run() */
+#include <unistd.h>		        /* close() */
 
 
 /* Client connects to this port at the server */

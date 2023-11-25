@@ -1,4 +1,12 @@
+#include <openssl/bn.h>                 // BIGNUM
+#include <netdb.h>                      // struct sockaddr
+#include "../../hdr/input-args/utils.h" // enum PartType
+#include <openssl/ec.h>                 // EC_POINT
+#include "../../hdr/macros.h"           // SUCCESS
 #include "../../hdr/elgamal/utils.h"
+#include "../../hdr/error/utils.h"   // general_error()
+#include <ctype.h>		     // isalnum()
+#include "../../hdr/network/utils.h" // send_msg()
 
 
 /**
@@ -48,6 +56,7 @@ parse_hardcoded_bignum (
     free(buf);
     r = fclose(fin);
     if (r == EOF) { return general_error("Failed to close hardcoded input file"); }
+
     return SUCCESS;
 }
 
@@ -145,9 +154,6 @@ elgamal_generate_keys (
 
     /* BN_free(add); */
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }
 
@@ -165,7 +171,7 @@ elgamal_mul (
     GamalCiphertext    b,
     BIGNUM      *modulus)
 {
-    int r = 1;
+    int r;
     BN_CTX *ctx = BN_CTX_new();
     res->c1 = BN_new();
     if (!res->c1) { r = 0; return openssl_error("Error allocating res->c1"); }
@@ -179,9 +185,6 @@ elgamal_mul (
     if (!r) { return openssl_error("Error calculating a.c2 * b.c2"); }
 
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }
 
@@ -199,7 +202,7 @@ elgamal_exp (
     BIGNUM     *exponent,
     BIGNUM      *modulus)
 {
-    int r = 1;
+    int r;
     BN_CTX *ctx = BN_CTX_new();
     res->c1 = BN_new();
     if (!res->c1) { r = 0; return openssl_error("Error allocating res->c1"); }
@@ -213,9 +216,6 @@ elgamal_exp (
     if (!r) { return openssl_error("Error calculating a.c2^r"); }
 
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }
 
@@ -239,7 +239,7 @@ elgamal_permute_ciphertexts (
     r = BN_set_word(bn_len, len);
     for (int i = 0; i < len; i++) {
 	r = BN_rand_range(bn_rand, bn_len);
-	if (!r) {return openssl_error("Failed bn_rand_range()"); }
+	if (!r) { return openssl_error("Failed bn_rand_range()"); }
 	rand = BN_get_word(bn_rand);
 	BN_copy(bn_tmp_c1, ciphers[i].c1);
 	BN_copy(bn_tmp_c2, ciphers[i].c2);
@@ -272,6 +272,7 @@ elgamal_send_pk (
     if (!r) { return general_error("Failed to send generator"); }
     r = send_msg(sockfd, pk->mul_mask, "\t- mul_mask  =", Bignum);
     if (!r) { return general_error("Failed to send mul_mask"); }
+
     return SUCCESS;
 }
 
@@ -287,6 +288,7 @@ elgamal_send_ciphertext (
     if (!r) { return general_error("Failed to send ciphertext.c1"); }
     r = send_msg(sockfd, c->c2, "\t- c2 = ", Bignum);
     if (!r) { return general_error("Failed to send ciphertext.c2"); }
+
     return SUCCESS;
 }
 
@@ -303,6 +305,7 @@ elgamal_send_shamir_shares (
 	r = send_msg(sockfd, shares[i], "\t- share = ", Bignum);
 	if (!r) { return general_error("Failed to send share"); }
     }
+
     return SUCCESS;
 }
 
@@ -350,4 +353,19 @@ elgamal_recv_ciphertext (
     if (!r) { return general_error("Failed to recv ciphertext c2"); }
 
     return SUCCESS;
+}
+
+/**
+ *
+ */
+int
+log_base2 (
+    int sec_par)
+{
+    int result = -1;
+    while (sec_par > 0) {
+	sec_par >>= 1;
+	result++;
+    }
+    return result;
 }

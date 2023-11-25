@@ -1,4 +1,16 @@
+#include <stdlib.h>                     // size_t
+#include <openssl/bn.h>                 // BIGNUM
+#include "../../hdr/elgamal/utils.h"    // GamalKeys
+#include "../../hdr/input-args/utils.h" // struct InputArgs
+#include <netdb.h>                      // struct sockaddr
+#include <openssl/ec.h>                 // EC_POINT
+#include "../../hdr/macros.h"           // SUCCESS
 #include "../../hdr/elgamal/thresholding.h"
+#include "../../hdr/network/utils.h" // recv_msg()
+#include "../../hdr/error/utils.h"   // general_error()
+#include "../../hdr/crypto/utils.h"  // hash()
+#include <openssl/evp.h>	     // EVP_MAX_MD_SIZE
+#include <openssl/sha.h>	     // SHA_DIGEST_LENGTH
 
 
 /**
@@ -52,11 +64,13 @@ elgamal_server_thresholding (
 	if (!r) { return openssl_error("Failed to mod exp cipher.c1^sk"); }
 
 	switch (ia.secpar) {
+	case 160:		/* Fall through */
 	case 1024:
 	    digest_len = SHA_DIGEST_LENGTH;
 	    /* Fn alloc's cipher_digests[i] */
 	    r = hash(&cipher_digests[i], cipher[i].c2, "SHA1", digest_len, Bignum);
 	    break;
+	case 224:		/* Fall through */
 	case 2048:
 	    digest_len = SHA224_DIGEST_LENGTH;
 	    r = hash(&cipher_digests[i], cipher[i].c2, "SHA224", digest_len, Bignum);
@@ -106,9 +120,6 @@ elgamal_server_thresholding (
     }
     free(secret_digest);
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }
 
@@ -223,8 +234,5 @@ elgamal_client_thresholding (
 	free(sym_enc_shares[i]);
     }
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }

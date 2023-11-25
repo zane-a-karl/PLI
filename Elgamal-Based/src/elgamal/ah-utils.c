@@ -1,4 +1,8 @@
+#include <openssl/bn.h>              // BIGNUM
+#include "../../hdr/elgamal/utils.h" // GamalCiphertext
+#include "../../hdr/macros.h"        // SUCCESS
 #include "../../hdr/elgamal/ah-utils.h"
+#include "../../hdr/error/utils.h"   // openssl_error()
 
 
 /**
@@ -14,7 +18,7 @@ elgamal_ah_encrypt (
     BIGNUM        *bn_plaintext,
     int                 sec_par)
 {
-    int r = 1;
+    int r;
     BIGNUM *bn_rand_elem;
     BIGNUM *gen_exp_ptxt;
     BN_CTX *ctx = BN_CTX_new();
@@ -49,9 +53,6 @@ elgamal_ah_encrypt (
     BN_free(bn_rand_elem);
     BN_free(gen_exp_ptxt);
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }
 
@@ -61,7 +62,7 @@ elgamal_ah_decrypt (
     GamalKeys              keys,
     GamalCiphertext *ciphertext)
 {
-    int r = 1;
+    int r;
     BIGNUM *denominator;
     BIGNUM *tmp;
     BN_CTX *ctx = BN_CTX_new();
@@ -85,9 +86,6 @@ elgamal_ah_decrypt (
 
     BN_free(denominator);
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }
 
@@ -126,9 +124,6 @@ elgamal_brute_force_discrete_log (
     BN_free(x);
     BN_free(test_elem);
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }
 
@@ -137,7 +132,7 @@ baby_step_giant_step (
     BIGNUM *bn_plaintext)
 {
     //TODO
-    return FAILURE;
+    return general_error("Failed to implement bsgs fn");
 }
 
 int
@@ -146,7 +141,7 @@ elgamal_skip_dlog_check_is_one (
     GamalKeys         keys,
     GamalCiphertext cipher)
 {
-    int r = 1;
+    int r;
     BIGNUM *denominator;
     BIGNUM *decrypt_res;
     BIGNUM *tmp;
@@ -174,8 +169,5 @@ elgamal_skip_dlog_check_is_one (
     BN_free(denominator);
     BN_free(decrypt_res);
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }

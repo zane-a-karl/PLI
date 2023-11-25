@@ -1,4 +1,12 @@
+#include <stdlib.h>	                // size_t
+#include <openssl/bn.h>	                // BIGNUM
+#include "../../hdr/input-args/utils.h" // InputArgs
+#include "../../hdr/macros.h"           // MAX_FILENAME_LEN
 #include "../../hdr/protocols/PLIca-elgamal-ah.h"
+#include "../../hdr/elgamal/utils.h"	// GamalKeys
+#include "../../hdr/error/utils.h"	// openssl_error()
+#include "../../hdr/logging/utils.h"	// TSTART()
+#include "../../hdr/elgamal/ah-utils.h" // elgamal_ah_encrypt()
 
 
 extern uint64_t total_bytes;

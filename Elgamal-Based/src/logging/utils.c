@@ -1,4 +1,7 @@
-#include "../hdr/logging-utils.h"
+#include "../../hdr/macros.h" // MAX_FILENAME_LEN
+#include "../../hdr/logging/utils.h"
+#include <string.h> // strnlen()
+#include <stdlib.h> // calloc()
 
 
 /**

@@ -1,4 +1,13 @@
+#include <stdlib.h>	                // size_t
+#include <openssl/bn.h>	                // BIGNUM
+#include <openssl/ec.h>                 // EC_POINT
+#include "../../hdr/macros.h"           // MAX_FILENAME_LEN
+#include "../../hdr/input-args/utils.h" // InputArgs
 #include "../../hdr/protocols/PLI-ecelgamal-ah.h"
+#include "../../hdr/ecelgamal/utils.h"	  // EcGamalKeys
+#include "../../hdr/error/utils.h"	  // openssl_error()
+#include "../../hdr/logging/utils.h"	  // TSTART()
+#include "../../hdr/ecelgamal/ah-utils.h" // ecelgamal_ah_encrypt()
 
 
 extern uint64_t total_bytes;
@@ -76,9 +85,6 @@ server_run_pli_ecelgamal_ah (
 	BN_free(bn_plain[i]);
     }
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }
 
@@ -139,9 +145,9 @@ client_run_pli_ecelgamal_ah (
 	r = ecelgamal_send_ciphertext(sockfd, &ptmul_res[i], &server_pk, "Client sent:");
 	if (!r) { return general_error("Failed to send exp_res"); }
     }
-    char *tmp = EC_POINT_point2hex(server_pk.group, ptmul_res[0].c1,
-				   POINT_CONVERSION_UNCOMPRESSED, ctx);    
-    printf("bytes for half a message = %lu\n", strlen(tmp));
+    /* char *tmp = EC_POINT_point2hex(server_pk.group, ptmul_res[0].c1, */
+    /* 				   POINT_CONVERSION_UNCOMPRESSED, ctx);     */
+    /* printf("bytes for half a message = %lu\n", strlen(tmp)); */
 
     EC_GROUP_free(server_pk.group);
     BN_free(server_pk.order);
@@ -164,8 +170,5 @@ client_run_pli_ecelgamal_ah (
 	EC_POINT_free(server_cipher[i].c2);
     }
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }

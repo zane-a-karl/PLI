@@ -1,4 +1,15 @@
+#include <stdlib.h>                     // size_t
+#include <openssl/ec.h>                 // EC_GROUP
+#include "../../hdr/ecelgamal/utils.h"  // EcGamalKeys
+#include "../../hdr/input-args/utils.h" // InputArgs
+#include <netdb.h>                      // struct sockaddr
+#include "../../hdr/macros.h"           // SUCCESS
 #include "../../hdr/ecelgamal/thresholding.h"
+#include "../../hdr/network/utils.h"	// recv_msg()
+#include "../../hdr/error/utils.h"	// general_error()
+#include <openssl/evp.h>		// EVP_MAX_MD_SIZE
+#include <openssl/sha.h>		// SHA_DIGEST_LENGTH
+#include "../../hdr/crypto/utils.h"	// hash()
 
 
 /**
@@ -110,9 +121,6 @@ ecelgamal_server_thresholding (
     }
     free(secret_digest);
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }
 
@@ -234,8 +242,5 @@ ecelgamal_client_thresholding (
 	free(sym_enc_shares[i]);
     }
     BN_CTX_free(ctx);
-    if (!r) {
-	return FAILURE;
-    }
     return SUCCESS;
 }
