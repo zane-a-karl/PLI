@@ -1,6 +1,6 @@
 CC=gcc
 LINK=-lcrypto
-FLAGS=-g -Wall -Werror -Wpedantic -fsanitize=address
+FLAGS := -g -Wall -Werror -Wpedantic
 SRC=src
 OBJ=obj
 HDR=hdr
@@ -20,6 +20,17 @@ OBJS=$(patsubst $(SRC)/%.c, $(OBJ)/%.o, $(SRCS))
 
 NOT_MAIN_OBJS=$(filter-out $(OBJ)/$(MAIN)%.o, $(OBJS))
 MAIN_OBJS=$(filter $(OBJ)/$(MAIN)%.o, $(OBJS))
+
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Linux)
+        # Linux-specific flags
+	LINK += -lbsd
+else ifeq ($(UNAME_S),Darwin)
+        # macOS-specific flags
+	FLAGS := -fsanitize=address $(FLAGS)
+else
+	$(error Unsupported operating system: $(UNAME_S))
+endif
 
 all: DIR_SETUP CLIENT SERVER CLIENT_AND_SERVER
 

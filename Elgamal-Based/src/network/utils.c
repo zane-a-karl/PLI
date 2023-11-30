@@ -9,6 +9,11 @@
 #include <unistd.h>		   // close()
 #include <arpa/inet.h>		   // inet_ntop()
 #include <signal.h>		   // sigemptyset()
+#include <sys/wait.h>              // waitpid()
+#ifdef __linux__                   // Check if the platform is linux
+#include <bsd/string.h>            // strlcpy()
+#endif
+
 
 
 /* Should this be in logging/utils.c or here? */

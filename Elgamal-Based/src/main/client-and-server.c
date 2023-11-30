@@ -3,13 +3,13 @@
 #include <netdb.h>
 #include <openssl/ec.h>
 #include "../../hdr/input-args/utils.h"
-#include "../../hdr/error/utils.h" /* general_error() */
-#include "../../hdr/network/utils.h" /* hardcode_socket_parameters(), set_socket_and_bind/connect(), start_server(), reap_all_dead_processes(), accept_connection() */
-#include "../../hdr/protocols/utils.h" /* PliProtocol, run() */
-#include <sys/types.h>		/* pid_t, freeaddrinfo() */
-#include <sys/wait.h>		/* waitpid() */
-#include <stdio.h>		/* snprintf(), perror(), printf() */
-#include <unistd.h>		/* fork(), close() */
+#include "../../hdr/error/utils.h"     // general_error()
+#include "../../hdr/network/utils.h"   // hardcode_socket_parameters()
+#include "../../hdr/protocols/utils.h" // PliProtocol
+#include <sys/types.h>		       // pid_t
+#include <sys/wait.h>		       // waitpid()
+#include <stdio.h>		       // snprintf()
+#include <unistd.h>		       // fork()
 
 
 #define LISTENER_QUEUE_LEN 10
@@ -57,6 +57,7 @@ main (
 	/* Child process for Client */
 	close(sockfd_server);
 	hardcode_socket_parameters(&service_info_client, port, CLIENT, ia.hostname);
+	free(port);
 	set_socket_and_connect(&sockfd_client, &service_info_client);
 	freeaddrinfo(service_info_client);
 	/* Start the protocol */
