@@ -64,7 +64,7 @@ server_run_pli_elgamal_mh (
 	    printf("\n");
 	}
     }
-    COLLECT_LOG_ENTRY(ia.secpar, ia.num_entries, total_bytes);
+    COLLECT_LOG_ENTRY(ia.secpar, ia.num_entries, ia.threshold, ia.expected_matches, total_bytes);
 
     BN_free(server_keys.pk->modulus);
     BN_free(server_keys.pk->generator);

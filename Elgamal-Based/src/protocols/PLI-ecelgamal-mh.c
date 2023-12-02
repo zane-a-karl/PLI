@@ -91,7 +91,7 @@ server_run_pli_ecelgamal_mh (
 	    printf("\n");
 	}
     }
-    COLLECT_LOG_ENTRY(ia.secpar, ia.num_entries, total_bytes);
+    COLLECT_LOG_ENTRY(ia.secpar, ia.num_entries, ia.threshold, ia.expected_matches, total_bytes);
 
     EC_GROUP_free(server_keys.pk->group);
     BN_free(server_keys.pk->order);

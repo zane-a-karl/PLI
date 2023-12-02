@@ -850,7 +850,7 @@ exec_BW_alg (
 	rv = gaussian_elim(&BW_mat[0][0], modulus, r, c);
 	if (!rv) { return general_error("Failed during gaussian_elim"); }
 	/* printf("------------\n"); */
-	print_mat(&BW_mat[0][0], r, c);
+	/* print_mat(&BW_mat[0][0], r, c); */
 	for (size_t i = 0; i < r; i++) {
 	    if (BN_is_one(BW_mat[i][i])) {
 		sum_pivots++;

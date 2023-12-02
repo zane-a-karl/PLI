@@ -28,8 +28,9 @@ parse_input_args (
     ia->htype     = AH;
     ia->secpar    = 64UL;
     ia->threshold = 0;
-    ia->client_filename = "input/client.txt";
-    ia->server_filename = "input/server.txt";
+    ia->expected_matches = 0;
+    ia->client_filename  = "input/client.txt";
+    ia->server_filename  = "input/server.txt";
     if (party == CLIENT) {
 	/* TODO: use stdlib system() to call ./setup_default_client_file.sh */
 	r = parse_file_for_num_entries(&ia->num_entries, ia->client_filename);
@@ -49,12 +50,13 @@ parse_input_args (
 	    {"security-parameter", required_argument, NULL, 'y'},
 	    {"list-length",        required_argument, NULL, 'n'},
 	    {"threshold",          required_argument, NULL, 't'},
+	    {"expected-matches",   required_argument, NULL, 'x'},
 	    {"client-filename",    required_argument, NULL, 'c'},
 	    {"server-filename",    required_argument, NULL, 's'},
 	    {0, 0, 0, 0}
 	};
     while (1) {
-	c = getopt_long(argc, argv, "h:p:e:m:y:n:t:c:s:", long_options, &option_index);
+	c = getopt_long(argc, argv, "h:p:e:m:y:n:t:x:c:s:", long_options, &option_index);
 	/* Detect the end of the options. */
 	if (c == -1) { break; }
 	switch (c) {
@@ -102,6 +104,11 @@ parse_input_args (
 	    r = str_to_size_t(&ia->threshold, optarg);
 	    if (!r) { return general_error("Failed to parse threshold"); }
 	    break;
+        case 'x':
+	    printf("option -x with value `%s'\n", optarg);
+	    r = str_to_size_t(&ia->expected_matches, optarg);
+	    if (!r) { return general_error("Failed to parse expected_matches"); }
+	    break;
         case 'c':
 	    printf("option -c with value `%s'\n", optarg);
 	    ia->client_filename = optarg;
@@ -121,6 +128,7 @@ parse_input_args (
 	    printf("--security-parameter -y <security parameter>\n");
 	    printf("--list-len           -n <list-len>\n");
 	    printf("--threshold          -t <threshold>\n");
+	    printf("--expected-matches   -x <expected-matches>\n");
 	    printf("--client-filename    -c <client-filename>\n");
 	    printf("--server-filename    -s <server-filename>\n");
 	    return general_error("Failed to follow correct program usage");

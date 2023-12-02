@@ -54,8 +54,9 @@ typedef struct InputArgs {
     enum ElgamalFlavor    eflav;
     enum HomomorphismType htype;
     size_t               secpar;
-    size_t          num_entries;    
+    size_t          num_entries;
     size_t            threshold;
+    size_t     expected_matches;
     char       *client_filename;
     char       *server_filename;
 } InputArgs;

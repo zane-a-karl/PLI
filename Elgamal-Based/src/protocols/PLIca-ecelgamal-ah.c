@@ -63,7 +63,7 @@ server_run_pli_ca_ecelgamal_ah (
 	cardinality += matched;
     }
     printf("Intersection Cardinality = %*zu\n", -3, cardinality);
-    COLLECT_LOG_ENTRY(ia.secpar, ia.num_entries, total_bytes);
+    COLLECT_LOG_ENTRY(ia.secpar, ia.num_entries, ia.threshold, ia.expected_matches, total_bytes);
 
     EC_GROUP_free(server_keys.pk->group);
     BN_free(server_keys.pk->order);

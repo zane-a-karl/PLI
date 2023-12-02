@@ -80,7 +80,7 @@ server_run_t_pli_elgamal_ah (
     } else {
 	printf("Failed to meet threshold");
     }
-    COLLECT_LOG_ENTRY(ia.secpar, ia.num_entries, total_bytes);
+    COLLECT_LOG_ENTRY(ia.secpar, ia.num_entries, ia.threshold, ia.expected_matches, total_bytes);
 
     BN_free(server_keys.pk->modulus);
     BN_free(server_keys.pk->generator);
