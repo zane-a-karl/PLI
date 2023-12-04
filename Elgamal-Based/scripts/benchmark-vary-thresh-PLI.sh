@@ -48,7 +48,6 @@ while getopts "p:e:m:y:n:" opt; do
 	    secpar=$OPTARG
 	    ;;
 	n)
-	    # Kind of useless at the moment because this doesn't affect anything
 	    # echo "Option 'd' was triggered with argument: $OPTARG"
 	    list_len=$OPTARG;
 	    ;;
@@ -85,11 +84,11 @@ for (( i=$min_thresh; $i<=$max_thresh; i++ ))
 do
     for ((j=0; j<10; j++))
     do
-	setup_input_files -n "50" -s "$secpar" -f $(echo "scale=2; 80 / 100" | bc)
+	setup_input_files -n "$list_len" -s "$secpar" -f $(echo "scale=2; 75 / 100" | bc)
 	matches=$?
 	printf "%s%d\n" "Begin: $pmeth $eflav $htype Protocol #" "$j"
 	# exit
-	./bin/main/client-and-server -p "$pmeth" -y "$secpar" -e "$eflav" -m "$htype" -t $(echo "50 * $i / 10" | bc) -x $matches
+	./bin/main/client-and-server -p "$pmeth" -y "$secpar" -e "$eflav" -m "$htype" -t $(echo "$list_len * $i / 10" | bc) -x $matches
 	#	$pids=$(ps aux | grep "elgamal" | grep -v "grep" | awk '{print $2}')
 	wait
 	printf "%s%d\n\n" "Finish:  $pmeth $eflav $htype Protocol #" "$j"
