@@ -1,4 +1,4 @@
-# Elgamal-based Private List Intersection(PLI)
+# Elgamal-based Private List Intersection (PLI)
 
 ## Purpose
 
@@ -18,22 +18,35 @@ The subdirectory is organized as follows:
 	- Automatic compilation and testing scripts are located in the `scripts/` trunk
 	- Output logs from the scripts are located in the `logs/` trunk
 
+## Dependencies
+
+	- C compiler (e.g. gcc)
+	- libssl-dev
+		- brew install openssl@3
+		- apt-get install libssl-dev
+	- libbsd-dev (Linux only)
+		- apt-get install libbsd-dev
+	- make
+	- bc
+
 ## Compilation and Execution Instructions
 
-To compile and execute on a Mac or other Unix-based system you must follow the following steps:
+On macOS:
 
-	- If you are not already in the `AH-PLI/` trunk `cd` into it.
-	- Run `make`
-	- Now you have some options:
-
+	1. `cd Elgamal-Based/`
+	2. `make`
+	3. Now you have some options:
 	    - Running a client and server in two separate terminals:
+		    - `source ./scripts/helpers.sh`
+			- `setup_input_files -n <# of list entries> -s <security parameter in # bits> -f <fraction of matches>`
+		    - Open two terminals
+			- In the one terminal run:
+				- `./bin/main/server =p <pli method> -e <EG or ECEG> -h <AH or MH> -y <security param> -t <threshold> -s input/server.txt`
+		    - In the other run:
+				- `./bin/main/client -h <hostname> -p <pli method> -e <EG or ECEG> -m <AH or MH> -y <security param> -c input/client.txt`
+		- Running a client and server from the same terminal:
+			- `./bin/main/client-and-server -h <hostname> -p <pli method> -e <EG or ECEG> -m <AH or MH> -y <security param> -s input/server.txt -c input/client.txt`
 
-		    - Optionally run `source ./scripts/helpers.sh` followed by `setup_input_files <# entries>`
-		    - In one terminal run `./bin/server <pli method> <security param> input/server.txt <EG or ECEG> <AH or MH>`
-		    - In another terminal run `./bin/client <hostname> <pli method> <security param> input/client.txt <EG or ECEG> <AH or MH>`
-		- Running a client and server from the same terminal run `./bin/client-and-server <hostname> <pli method> <security param> input/server.txt input/client.txt <EG or ECEG> <AH or MH>`
-
-To run the benchamrking script:
-    - Run `chmod +x <name of Elgamal script you'd like to run>`
-    - Note you do not need to run `make` as the automatic script will do so itself
-    - Run `./scripts/benchmark-single-protocol <pli method> <EG or ECEG> <AH or MH> <security param>`
+	4. To run the benchamrking script:
+		- Run `chmod +x scripts/<name of Elgamal script you'd like to run>`
+		- `./scripts/benchmark-single-protocol -p <pli method> -e <EG or ECEG> -m <AH or MH> -y <security param> -n <# entries>`

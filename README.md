@@ -1,7 +1,12 @@
 # PLI
 Implementation Code for the PLI Project
 
-Todo List:
- - [ ] Implement OPRF version
- - [ ] Implement Additive ElGamal
- - [ ] Implement Bloom Paper
+ - [X] ElGamal-Based
+	 - [Link to README](Elgamal-Based/README.md)
+	 - [Link to Source Code](Elgamal-Based/src/)
+ - [ ] OPRF-Based version
+	 - [Link to README](OPRF-Based/README.md)
+	 - [Link to Source Code](OPRF-Based/src/)
+ - [ ] BloomFilter-Pallier-Based
+	 - [Link to README](BloomFilter-Paillier-Based/README.md)
+	 - [Link to Source Code](BloomFilter-Paillier-Based/src/)
