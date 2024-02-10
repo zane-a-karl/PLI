@@ -11,7 +11,7 @@ typedef struct LogItems {
     char *htype;
 } LogItems;
 
-#define TSTART(sp)							\
+#define TSTART(sp, log_filename)					\
     LogItems *l = parse_src_filename(__FILE__);				\
     logfile = calloc(MAX_FILENAME_LEN, sizeof(char));			\
     snprintf(logfile, MAX_FILENAME_LEN, "%s%s-%s-%s-%lu.%s", "logs/",	\
@@ -20,7 +20,7 @@ typedef struct LogItems {
     free(l->eflav);							\
     free(l->htype);							\
     free(l);								\
-    logfs = fopen(logfile, "a");					\
+    logfs = fopen(log_filename, "a");/*previously 'logfile'*/		\
     printf("Starting the clock: \n");					\
     clock_gettime(CLOCK_MONOTONIC, &t1);
 

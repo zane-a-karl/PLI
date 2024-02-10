@@ -53,10 +53,11 @@ parse_input_args (
 	    {"expected-matches",   required_argument, NULL, 'x'},
 	    {"client-filename",    required_argument, NULL, 'c'},
 	    {"server-filename",    required_argument, NULL, 's'},
+	    {"log-filename",       required_argument, NULL, 'l'},
 	    {0, 0, 0, 0}
 	};
     while (1) {
-	c = getopt_long(argc, argv, "h:p:e:m:y:n:t:x:c:s:", long_options, &option_index);
+	c = getopt_long(argc, argv, "h:p:e:m:y:n:t:x:c:s:l:", long_options, &option_index);
 	/* Detect the end of the options. */
 	if (c == -1) { break; }
 	switch (c) {
@@ -117,6 +118,10 @@ parse_input_args (
 	    printf("option -s with value `%s'\n", optarg);
 	    ia->server_filename = optarg;
 	    break;
+        case 'l':
+	    printf("option -l with value `%s'\n", optarg);
+	    ia->log_filename = optarg;
+	    break;
         case '?':
 	    /* getopt_long returns its own error message */
         default:
@@ -158,6 +163,10 @@ parse_input_args (
     }
     if ( ia->eflav == ECEG && ia->secpar > 224 ) {
 	return general_error("Library's largest curve lies in a 224-bit field");
+    }
+    if (strncmp(ia->log_filename, "", MAX_FILENAME_LEN) == 0) {
+	ia->log_filename = "stdout";
+	perror("WARNING: logging file not specified and set by default to stdout");
     }
 
     return SUCCESS;

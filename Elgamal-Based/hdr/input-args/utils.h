@@ -59,6 +59,7 @@ typedef struct InputArgs {
     size_t     expected_matches;
     char       *client_filename;
     char       *server_filename;
+    char          *log_filename;
 } InputArgs;
 
 int

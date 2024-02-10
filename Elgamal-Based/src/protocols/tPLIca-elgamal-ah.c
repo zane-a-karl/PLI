@@ -32,7 +32,7 @@ server_run_t_pli_ca_elgamal_ah (
     if (!r) { return openssl_error("Failed to gen EG keys"); }
 
     /* Start here to exclude key generation */
-    TSTART(ia.secpar);
+    TSTART(ia.secpar, ia.log_filename);
 
     BIGNUM *bn_plain[ia.num_entries];
     /* Fn alloc's each bn_plain[i] */

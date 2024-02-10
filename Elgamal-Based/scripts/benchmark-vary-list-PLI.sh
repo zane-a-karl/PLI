@@ -73,7 +73,13 @@ pmeth=$(echo "$pmeth" | to_lower | beautify_pmeth);
 eflav=$(echo "$eflav" | to_upper | beautify_eflav);
 htype=$(to_upper "$htype");
 
-logfile="logs/$pmeth-$eflav-$htype-$secpar.csv"
+logdir="logs/vary-list"
+
+if ! [ -d "$logdir" ];
+then
+    mkdir "$logdir"
+fi
+logfile="$logdir/$pmeth-$eflav-$htype-$secpar.csv"
 echo "Logging Output to be stored in $logfile"
 
 make --quiet clean;
@@ -85,11 +91,12 @@ for ((i=$start_size; i<=$end_size; i+=$sample_size))
 do
     for ((j=0; j<10; j++))
     do
-	setup_input_files -n "$i" -s "$secpar" -f $(echo "scale=2; 80 / 100" | bc)
+	# setup_input_files -n "$i" -s "$secpar" -f $(echo "scale=2; 80 / 100" | bc)
+	setup_input_files -n "$i" -s "32" -f $(echo "scale=2; 80 / 100" | bc)
 	matches=$?
 	printf "%s%d\n" "Begin: $pmeth $eflav $htype Protocol #" "$j"
 	# Fixed threshold of (1 / 3) of list length
-	./bin/main/client-and-server -p "$pmeth" -y "$secpar" -e "$eflav" -m "$htype" -t "$((i / 3))" -x "$matches"
+	./bin/main/client-and-server -p "$pmeth" -y "$secpar" -e "$eflav" -m "$htype" -t "$((i / 3))" -x "$matches" -l "$logfile"
 	#	$pids=$(ps aux | grep "elgamal" | grep -v "grep" | awk '{print $2}')
 	wait
 	printf "%s%d\n\n" "Finish:  $pmeth $eflav $htype Protocol #" "$j"
