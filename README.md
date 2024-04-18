@@ -10,4 +10,4 @@ Implementation Code for the PLI Project
  - [ ] BloomFilter-Pallier-Based
 	 - [Link to README](BloomFilter-Paillier-Based/README.md)
 	 - [Link to Source Code](BloomFilter-Paillier-Based/src/)
- - [ ] Garbled-Circuits-Based
+ - [ ] Garbled-Circuit-Based
