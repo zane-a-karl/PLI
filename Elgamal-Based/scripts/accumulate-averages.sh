@@ -25,7 +25,7 @@ function accumulate_averages {
             *)
                 # Unknown option
                 echo "Unknown option: $1"
-		exit 1;
+		return;
                 ;;
         esac
     done
