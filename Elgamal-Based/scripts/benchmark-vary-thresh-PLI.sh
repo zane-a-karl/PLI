@@ -91,7 +91,8 @@ do
     for ((j=0; j<10; j++))
     do
 	# setup_input_files -n "$list_len" -s "$secpar" -f $(echo "scale=2; 75 / 100" | bc)
-	setup_input_files -n "$list_len" -s "32" -f $(echo "scale=2; 75 / 100" | bc)
+	# setup_input_files -n "$list_len" -s "32" -f $(echo "scale=2; 75 / 100" | bc) # 39 matches
+	setup_input_files -n "$list_len" -s "32" -f $(echo "scale=2; 83 / 100" | bc) # 44 matches	
 	matches=$?
 	printf "%s%d\n" "Begin: $pmeth $eflav $htype Protocol #" "$j"
 	# exit
