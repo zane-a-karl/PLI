@@ -11,3 +11,4 @@ Implementation Code for the PLI Project
 	 - [Link to README](BloomFilter-Paillier-Based/README.md)
 	 - [Link to Source Code](BloomFilter-Paillier-Based/src/)
  - [ ] Garbled-Circuit-Based
+ - [ ] Lattice-Based
